@@ -13,4 +13,4 @@ Compiler for the T language, a subset of Java.
 
 Threads Package
 ---------------
-A custom threads package which mimics the functionality of standard C POSIX threads.
+A custom threads package which duplicates the feature set of standard C POSIX threads.
