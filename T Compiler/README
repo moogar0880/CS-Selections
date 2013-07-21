@@ -1,0 +1,35 @@
+Jan 2008
+edited Aug 2008
+edited Jan 2011
+edited Mar 2013
+edited Apr 2013
+
+This directory contains the source code for a compiler for the T language.
+
+The compiler reads a T program from stdin. And it writes a dump
+of the AST for the program (after semantic analysis) to stderr. The
+AST is dumped in prefix form, one AST node per line.
+
+To build the compiler: make
+
+To run the compiler: ./tc <input.t >output.s
+
+To assemble and link the output of the compiler: gcc output.s RTS.c
+
+To build a stand-alone version of the scanner: make lexdbg
+
+To run the stand-alone scanner: lexdbg <input.t
+
+The stand-alone scanner will read the input program from stdin and
+will write the tokens to stdout, one per line.
+
+Phase 3 Update:
+	1) All Phase 1 functionality has been been fixed and tested
+	thuroughly.
+	2) Haven't been able to figure out the last few issues from
+	phase 2, but hopefully will get those by Phase 4
+	3) That strange seg fault issue has persisted. I attempted
+	to follow the advice you gave in the notes on my returned
+	homework, however adding the addl $4, %esp did not remedy
+	the problem so I'm gonna have to figure something out to
+	get rid of that.
