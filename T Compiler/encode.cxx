@@ -81,7 +81,7 @@ void AST_Assignment::encode(){
   cout << "\tpopl\t%edx\n";
   cout << "\tmovl\t%eax, (%edx)\n";
   cout << "\tpushl\t%eax\n";
-  cout << "\taddl\t$4, %esp\n";
+  //cout << "\taddl\t$4, %esp\n";
 }
 
 void AST_Print::encode(){
