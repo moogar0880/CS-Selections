@@ -2,20 +2,21 @@
 #define _TYPE_H
 #include <vector>
 #include <string.h>
-// April 2013
-// Type representation for T language
-//
-// NOTE: don't construct Type objects directly! Use a TypeModule.
-//
-// A TypeModule is simply a mechanism for managing the memory used
-// to represent types. The strategy is to only allocate memory for
-// a distinct type once and re-use that memory for subsequent calls
-// to construct that type. A TypeModule keeps track of all the
-// allocated types so that memory can be reclaimed when the types
-// are no longer needed.
-//
-// So, to obtain a type, access the appropriate member function for
-// the global type module object, which is created in main.cxx.
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Type representation for T language
+ *
+ * NOTE: don't construct Type objects directly! Use a TypeModule.
+ *
+ * A TypeModule is simply a mechanism for managing the memory used
+ * to represent types. The strategy is to only allocate memory for
+ * a distinct type once and re-use that memory for subsequent calls
+ * to construct that type. A TypeModule keeps track of all the
+ * allocated types so that memory can be reclaimed when the types
+ * are no longer needed.
+ *
+ * So, to obtain a type, access the appropriate member function for
+ * the global type module object, which is created in main.cxx.
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 class Type{ // abstract base class
   public:

@@ -1,5 +1,7 @@
-// Symbol Table for T language
-// Symbol tables are implemented as a linked list. "Stupid is beautiful."
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Symbol Table for T language
+ * Symbol tables are implemented as a linked list. "Stupid is beautiful."
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>

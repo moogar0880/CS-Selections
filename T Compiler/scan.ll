@@ -1,5 +1,4 @@
 %{
-// Jan 2008
 // scanner for the Simp language
 // If the preprocessor symbol DEBUG is defined then the scanner
 // can be built in stand-alone mode, to allow the scanner to be

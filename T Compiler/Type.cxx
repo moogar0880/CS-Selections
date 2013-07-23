@@ -1,19 +1,20 @@
-// Jan 2008
-// Type representation for T language
-//
-// NOTE: Don't use Type methods directly. Rather use indirectly via
-//       TypeModule. See Type.h for more information.
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Type representation for T language
+ *
+ * NOTE: Don't use Type methods directly. Rather use indirectly via
+ *       TypeModule. See Type.h for more information.
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #include <iostream>
 using namespace std;
 #include <stdio.h>
 #include "Type.h"
 
-//------------------Type---------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~Type~~~~~~~~~~~~~~~~~~~~~~~~
 Type::Type(){}
 
 Type::~Type(){}
 
-//------------------No Type-------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~No Type~~~~~~~~~~~~~~~~~~~~~~~~
 TypeNone::TypeNone(){}
 
 TypeNone::~TypeNone(){}
@@ -22,7 +23,7 @@ char* TypeNone::toString(){
   return (char *) "<no type>";
 }
 
-//------------------Error Type-------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~Error Type~~~~~~~~~~~~~~~~~~~~~~~~
 TypeError::TypeError(){}
 
 TypeError::~TypeError(){}
@@ -31,7 +32,7 @@ char* TypeError::toString(){
   return (char *) "<error type>";
 }
 
-//------------------Int Type-------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~Int Type~~~~~~~~~~~~~~~~~~~~~~~~
 TypeInt::TypeInt(){}
 
 TypeInt::~TypeInt(){}
@@ -40,7 +41,7 @@ char* TypeInt::toString(){
   return (char *) "int";
 }
 
-//------------------Null Type-------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~Null Type~~~~~~~~~~~~~~~~~~~~~~~~
 TypeNull::TypeNull(){}
 
 TypeNull::~TypeNull(){}
@@ -49,7 +50,7 @@ char* TypeNull::toString(){
   return (char *) "null";
 }
 
-//------------------ClassType------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~ClassType~~~~~~~~~~~~~~~~~~~~~~~~
 TypeClass::TypeClass(char* n){
   name = n;
 }
@@ -66,7 +67,7 @@ char* TypeClass::toString(){
   return getName();
 }
 
-//-----------------TypeModule------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~TypeModule~~~~~~~~~~~~~~~~~~~~~~~~
 TypeModule::TypeModule(){
   intTypeInternal = (Type*) new TypeInt();
   errorTypeInternal = (Type*) new TypeError();
@@ -74,6 +75,7 @@ TypeModule::TypeModule(){
   nullTypeInternal = (Type*) new TypeNull();
 }
 
+//Search TypeModule and determine if a class with name n exists
 bool TypeModule::containsClassType(char* n){
   std::vector<TypeClass*>::iterator it;
   for(it = classTypes.begin(); it != classTypes.end(); ++it ){
@@ -83,6 +85,7 @@ bool TypeModule::containsClassType(char* n){
   return false;
 }
 
+// Create new ClassType with name n
 bool TypeModule::createNewClassType(char * n){
   if( containsClassType(n) ){ //compile time error
     return false;

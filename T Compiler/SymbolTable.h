@@ -3,11 +3,11 @@
 
 #include "Type.h"
 
-// Jan 2008
-// Symbol Table for T language
-//
-// It is just an inefficient linked list for now.
-
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Symbol Table for T language
+ *
+ * It is just an inefficient linked list for now.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 // Container for one symbol table entry
 class SymbolTableRecord{
   public:

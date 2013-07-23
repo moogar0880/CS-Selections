@@ -1,4 +1,6 @@
-// main routine for compiler for T language
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * main routine for compiler for T language
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 using namespace std;
 #include "SymbolTable.h"
 #include "StringPool.h"

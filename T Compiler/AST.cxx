@@ -1,7 +1,7 @@
-// Jan 2008
-// Abstract Syntax Tree implementation for T language
-//
-// semantic analysis methods are in analyze.cxx
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract Syntax Tree implementation for T language
+ * semantic analysis methods are in analyze.cxx
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #include <iostream>
 using namespace std;
@@ -18,7 +18,7 @@ extern TypeModule* types;
 // list of all valid classes, containing all their information
 std::vector<AST_Class*> globalClassList;
 
-//------------------AST_Node------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Node~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Node::AST_Node(){
   // by default get the current line number in the scanner
   line = getCurrentSourceLineNumber();
@@ -34,7 +34,7 @@ int AST_Node::getLineNumber(){
   return line;
 }
 
-//------------------AST_List------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_List~~~~~~~~~~~~~~~~~~~~~~~~
 AST_List::AST_List(AST_Node* newItem, AST_List* list){
   item = newItem;
   restOfList = list;
@@ -73,17 +73,17 @@ void AST_List::setOwner(char* n){
   ownerSet = true;
 }
 
-//------------------AST_Statement------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Statement~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Statement::~AST_Statement(){}
 
 AST_Statement::AST_Statement(){}
 
-//------------------AST_Literal------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Literal~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Literal::AST_Literal(){}
 
 AST_Literal::~AST_Literal(){}
 
-//------------------AST_StatementList------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_StatementList~~~~~~~~~~~~~~~~~~~~~~~~
 AST_StatementList::AST_StatementList(AST_Statement* s,
   AST_List* l) : AST_List((AST_Node*) s, l){}
 
@@ -92,14 +92,14 @@ AST_StatementList::~AST_StatementList(){
     delete owner;
 }
 
-//------------------AST_Expression------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Expression~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Expression::~AST_Expression(){}
 
 AST_Expression::AST_Expression(){
   type = types->noType();
 }
 
-//------------------AST_ExpressionStatement------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_ExpressionStatement~~~~~~~~~~~~~~~~~~~~~~~~
 AST_ExpressionStatement::AST_ExpressionStatement(AST_Expression* e){
   express = e;
 }
@@ -109,7 +109,7 @@ AST_ExpressionStatement::~AST_ExpressionStatement(){
 
 void AST_ExpressionStatement::dump(){}
 
-//------------------AST_MainFunction------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_MainFunction~~~~~~~~~~~~~~~~~~~~~~~~
 AST_MainFunction::AST_MainFunction(AST_StatementList* l){
   list = l;
 }
@@ -120,7 +120,7 @@ void AST_MainFunction::dump(){
   list->dump();
 }
 
-//------------------AST_ProgramList------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_ProgramList~~~~~~~~~~~~~~~~~~~~~~~~
 AST_ProgramList::AST_ProgramList(AST_CompilationUnit* c):AST_List((AST_Node*)c,
   NULL){
   if( c == NULL )
@@ -131,7 +131,7 @@ AST_ProgramList::~AST_ProgramList(){
   //delete main;
 }
 
-//------------------AST_BinaryOperator------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_BinaryOperator~~~~~~~~~~~~~~~~~~~~~~~~
 AST_BinaryOperator::~AST_BinaryOperator(){
   delete left;
   delete right;
@@ -142,7 +142,7 @@ AST_BinaryOperator::AST_BinaryOperator(AST_Expression* l, AST_Expression* r){
   right = r;
 }
 
-//------------------AST_UnaryOperator------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_UnaryOperator~~~~~~~~~~~~~~~~~~~~~~~~
 AST_UnaryOperator::~AST_UnaryOperator(){
   delete left;;
 }
@@ -151,7 +151,7 @@ AST_UnaryOperator::AST_UnaryOperator(AST_Expression* l){
   left = l;
 }
 
-//------------------AST_IntegerLiteral------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_IntegerLiteral~~~~~~~~~~~~~~~~~~~~~~~~
 AST_IntegerLiteral::~AST_IntegerLiteral(){}
 
 AST_IntegerLiteral::AST_IntegerLiteral(int in){
@@ -163,7 +163,7 @@ void AST_IntegerLiteral::dump(){
   cerr << "IntegerLiteral " << value << " " << type->toString() << endl;
 }
 
-//------------------AST_Variable------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Variable~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Variable::AST_Variable(char* in){
   name = in;
 }
@@ -192,7 +192,7 @@ void AST_Variable::setMaskedName(){
   maskSet = true;
 }
 
-//------------------AST_VariableList------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_VariableList~~~~~~~~~~~~~~~~~~~~~~~~
 AST_VariableList::AST_VariableList(AST_Expression* e,
   AST_VariableList* l):AST_List((AST_Node*)e, l){
   ownerSet = false;
@@ -211,7 +211,7 @@ void AST_VariableList::setOwner(char* n){
   ownerSet = true;
 }
 
-//------------------AST_Declaration------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Declaration~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Declaration::AST_Declaration(Type* t, AST_VariableList* l){
   type = t;
   list = l;
@@ -226,7 +226,7 @@ void AST_Declaration::dump(){
   list->dump();
 }
 
-//------------------AST_Assignment------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Assignment~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Assignment::AST_Assignment(AST_Expression* l, AST_Expression* r){
   lhs = l;
   rhs = r;
@@ -243,7 +243,7 @@ void AST_Assignment::dump(){
   rhs->dump();
 }
 
-//------------------AST_Print------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Print~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Print::AST_Print(AST_Expression* v){
   var = (AST_Expression*) v;
 }
@@ -257,7 +257,7 @@ void AST_Print::dump(){
   var->dump();
 }
 
-//------------------AST_Divide------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Divide~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Divide::AST_Divide(AST_Expression* l, AST_Expression* r) :
   AST_BinaryOperator(l, r){}
 
@@ -269,7 +269,7 @@ void AST_Divide::dump(){
   right->dump();
 }
 
-//------------------AST_Multiply------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Multiply~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Multiply::AST_Multiply(AST_Expression* l, AST_Expression* r) :
   AST_BinaryOperator(l, r){}
 
@@ -281,7 +281,7 @@ void AST_Multiply::dump(){
   right->dump();
 }
 
-//------------------AST_Add------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Add~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Add::AST_Add(AST_Expression* l, AST_Expression* r) :
   AST_BinaryOperator(l, r){}
 
@@ -293,7 +293,7 @@ void AST_Add::dump(){
   right->dump();
 }
 
-//------------------AST_Subtract------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Subtract~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Subtract::AST_Subtract(AST_Expression* l, AST_Expression* r) :
   AST_BinaryOperator(l, r){}
 
@@ -305,7 +305,7 @@ void AST_Subtract::dump(){
   right->dump();
 }
 
-//------------------AST_Equality------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Equality~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Equality::AST_Equality(AST_Expression* l, AST_Expression* r) :
   AST_BinaryOperator(l, r){}
 
@@ -317,7 +317,7 @@ void AST_Equality::dump(){
   right->dump();
 }
 
-//------------------AST_LessThan------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_LessThan~~~~~~~~~~~~~~~~~~~~~~~~
 AST_LessThan::AST_LessThan(AST_Expression* l, AST_Expression* r) :
   AST_BinaryOperator(l, r){}
 
@@ -329,7 +329,7 @@ void AST_LessThan::dump(){
   right->dump();
 }
 
-//------------------AST_GreaterThan------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_GreaterThan~~~~~~~~~~~~~~~~~~~~~~~~
 AST_GreaterThan::AST_GreaterThan(AST_Expression* l, AST_Expression* r) :
   AST_BinaryOperator(l, r){}
 
@@ -341,7 +341,7 @@ void AST_GreaterThan::dump(){
   right->dump();
 }
 
-//------------------AST_Negate------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Negate~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Negate::AST_Negate(AST_Expression* l) :
   AST_UnaryOperator(l){}
 
@@ -352,7 +352,7 @@ void AST_Negate::dump(){
   left->dump();
 }
 
-//------------------AST_Not------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Not~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Not::AST_Not(AST_Expression* l) :
   AST_UnaryOperator(l){}
 
@@ -363,7 +363,7 @@ void AST_Not::dump(){
   left->dump();
 }
 
-//------------------AST_Block------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Block~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Block::AST_Block(AST_StatementList* bl){
   list = bl;
 }
@@ -376,7 +376,7 @@ void AST_Block::dump(){
   cerr << "New Block\n";
 }
 
-//------------------AST_IfThenElse------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_IfThenElse~~~~~~~~~~~~~~~~~~~~~~~~
 AST_IfThenElse::AST_IfThenElse(AST_Expression* e, AST_Statement* ifs,
   AST_Statement* els){
   condition = e;
@@ -393,7 +393,7 @@ void AST_IfThenElse::dump(){
   cerr << "If " << condition << " else\n";
 }
 
-//------------------AST_While------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_While~~~~~~~~~~~~~~~~~~~~~~~~
 AST_While::AST_While(AST_Expression* e, AST_Statement* s){
   condition = e;
   stat = s;
@@ -409,7 +409,7 @@ void AST_While::dump(){
   cerr << "While " << condition << "\n";
 }
 
-//------------------AST_Return------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Return~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Return::AST_Return(AST_Expression* e){
   var = e;
 }
@@ -422,7 +422,7 @@ void AST_Return::dump(){
   cerr << "Return " << var << "\n";
 }
 
-//------------------AST_Break------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Break~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Break::AST_Break(){}
 
 AST_Break::~AST_Break(){}
@@ -431,7 +431,7 @@ void AST_Break::dump(){
   cerr << "Break\n";
 }
 
-//------------------AST_Continue------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Continue~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Continue::AST_Continue(){}
 
 AST_Continue::~AST_Continue(){}
@@ -440,7 +440,7 @@ void AST_Continue::dump(){
   cerr << "Continue\n";
 }
 
-//------------------AST_Class------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Class~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Class::AST_Class(AST_Expression* n, AST_StatementList* l, Type* p){
   name = ((AST_Variable*)(n))->name;
   parent = p;
@@ -477,13 +477,13 @@ AST_StatementList* AST_Class::getFields(){
   return fields;
 }
 
-//------------------AST_StatementList------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_StatementList~~~~~~~~~~~~~~~~~~~~~~~~
 AST_ClassList::AST_ClassList(AST_Class* c,
   AST_ClassList* l) : AST_List((AST_Node*) c, l){}
 
 AST_ClassList::~AST_ClassList(){}
 
-//------------------AST_CompilationUnit----------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_CompilationUnit~~~~~~~~~~~~~~~~~~~~~~~~
 AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
   AST_ClassList* l1, AST_ClassList* l2)
 {
@@ -501,6 +501,7 @@ AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
     listConvert(list);
 }
 
+// Helper function to convert an AST_List into a Vector
 void AST_CompilationUnit::listConvert(AST_List* l){
   if( l != NULL ){
     globalClassList.push_back((AST_Class*)(l->getItem()));
@@ -508,6 +509,7 @@ void AST_CompilationUnit::listConvert(AST_List* l){
   }
 }
 
+// Helper function to determine whether two AST_Classes are related
 bool AST_Node::areComparable(AST_Node* l, AST_Node* r){
   AST_Class* left = (AST_Class*) l;
   AST_Class* right = (AST_Class*) r;
@@ -531,7 +533,7 @@ void AST_CompilationUnit::dump(){
   cerr << "CompilationUnit\n";
 }
 
-//------------------AST_Cast------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Cast~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Cast::AST_Cast(AST_Expression* ex, AST_Expression* c){
   expr = ex;
   cast = c;
@@ -543,7 +545,7 @@ void AST_Cast::dump(){
   cerr << "Casting from " << cast << " to " << expr << endl;
 }
 
-//------------------AST_ArgumentsList------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_ArgumentsList~~~~~~~~~~~~~~~~~~~~~~~~
 AST_ArgumentsList::AST_ArgumentsList(AST_Node* gonnaBeNull){}
 
 AST_ArgumentsList::~AST_ArgumentsList(){}
@@ -552,7 +554,7 @@ void AST_ArgumentsList::dump(){
   cerr << "Argument List" << endl;
 }
 
-//------------------AST_ClassInstance------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_ClassInstance~~~~~~~~~~~~~~~~~~~~~~~~
 AST_ClassInstance::AST_ClassInstance(Type* t, AST_ArgumentsList* args){
   type = t;
   arguments = args;
@@ -567,7 +569,7 @@ void AST_ClassInstance::dump(){
   cerr << "Class Instance of type " << type << endl;
 }
 
-//------------------AST_FieldDeclaration------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_FieldDeclaration~~~~~~~~~~~~~~~~~~~~~~~~
 AST_FieldDeclaration::AST_FieldDeclaration(Type* t, AST_VariableList* l){
   type = t;
   list = l;
@@ -585,7 +587,7 @@ void AST_FieldDeclaration::setOwner(char* n){
   ownerSet = true;
 }
 
-//------------------AST_FieldReference------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_FieldReference~~~~~~~~~~~~~~~~~~~~~~~~
 AST_FieldReference::AST_FieldReference(AST_Expression* typ, AST_Expression* id){
   // type = types->classType(((AST_Variable*)(typ))->name);
   cerr << ((AST_Variable*)(id))->name << endl;
@@ -603,7 +605,7 @@ void AST_FieldReference::dump(){
   cerr << "Field Reference of type " << type << "\n";
 }
 
-//------------------AST_ClassTypeID------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_ClassTypeID~~~~~~~~~~~~~~~~~~~~~~~~
 AST_ClassTypeID::AST_ClassTypeID(AST_Expression* id){
   name = ((AST_Variable*)(id))->name;
 }
@@ -618,7 +620,7 @@ char* AST_ClassTypeID::toString(){
   return name;
 }
 
-//------------------AST_Null------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Null~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Null::AST_Null(){
   // type = types->nullType();
 }
@@ -629,7 +631,7 @@ void AST_Null::dump(){
   cerr << "Null Literal\n";
 }
 
-//----------------AST_EmptyStatement----------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_EmptyStatement~~~~~~~~~~~~~~~~~~~~~~~~
 AST_EmptyStatement::AST_EmptyStatement(){}
 AST_EmptyStatement::~AST_EmptyStatement(){}
 
@@ -637,7 +639,7 @@ void AST_EmptyStatement::dump(){
   cerr << "Empty\n";
 }
 
-//------------------AST_Convert------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Convert~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Convert::AST_Convert(AST_Expression* l) : AST_UnaryOperator(l){}
 
 AST_Convert::~AST_Convert(){}
@@ -647,7 +649,7 @@ void AST_Convert::dump(){
   left->dump();
 }
 
-//------------------AST_Deref------------------
+//~~~~~~~~~~~~~~~~~~~~~~~~AST_Deref~~~~~~~~~~~~~~~~~~~~~~~~
 AST_Deref::AST_Deref(AST_Expression* l) : AST_UnaryOperator(l){}
 
 AST_Deref::~AST_Deref(){}

@@ -1,13 +1,14 @@
 #ifndef _AST_H
 #define _AST_H
-// Jan 2008
-// Abstract Syntax Tree for T language
-//
-// the dump methods are for debugging - they display the AST to stderr.
-//
-// the analyze methods perform semantic analysis
-//
-// the encode methods perform code generation
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract Syntax Tree for T language
+ *
+ * the dump methods are for debugging - they display the AST to stderr.
+ *
+ * the analyze methods perform semantic analysis
+ *
+ * the encode methods perform code generation
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #include "Type.h"
 #include "SymbolTable.h"
