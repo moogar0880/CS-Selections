@@ -1,14 +1,18 @@
 #ifndef _SYMBOLTABLE_H
 #define _SYMBOLTABLE_H
 
-#include "Type.h"
-
+class Type;
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Symbol Table for T language
  *
  * It is just an inefficient linked list for now.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-// Container for one symbol table entry
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * SymbolTableRecord (STR) Class
+ *  Container for one symbol table entry
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class SymbolTableRecord{
   public:
     ~SymbolTableRecord();
@@ -19,7 +23,10 @@ class SymbolTableRecord{
     Type* type;
 };
 
-// The SymbolTable proper
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * SymbolTable Class
+ *  The SymbolTable Proper
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class SymbolTable{
   protected:
     SymbolTableRecord* head;
@@ -27,14 +34,16 @@ class SymbolTable{
   public:
     ~SymbolTable();
     SymbolTable();
-    // returns true if name is found
-    // if found, type returned through the second (reference) parameter
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     * Returns true if name is found
+     *  if found, type returned through the second (reference) parameter
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     bool lookup(char* name, Type*& type);
 
-    // returns true if successful
-    // in this case name and type are stored in a new record in table
-    // it only fails if name is already in the list
-    // in that case symbol table is not changed
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     * Returns true if successful and name and type are stored in a STR
+     * Fails if name is already in the ST, in this case nothing is changed
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     bool install(char* name, Type* type);
 
     void dump();

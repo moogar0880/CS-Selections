@@ -7,14 +7,19 @@
 #include <iostream>
 using namespace std;
 #include <stdio.h>
+#include "SymbolTable.h"
 #include "Type.h"
 
-//~~~~~~~~~~~~~~~~~~~~~~~~Type~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 Type::Type(){}
 
 Type::~Type(){}
 
-//~~~~~~~~~~~~~~~~~~~~~~~~No Type~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * None Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 TypeNone::TypeNone(){}
 
 TypeNone::~TypeNone(){}
@@ -23,7 +28,9 @@ char* TypeNone::toString(){
   return (char *) "<no type>";
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~Error Type~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Error Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 TypeError::TypeError(){}
 
 TypeError::~TypeError(){}
@@ -32,7 +39,9 @@ char* TypeError::toString(){
   return (char *) "<error type>";
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~Int Type~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Int Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 TypeInt::TypeInt(){}
 
 TypeInt::~TypeInt(){}
@@ -41,7 +50,9 @@ char* TypeInt::toString(){
   return (char *) "int";
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~Null Type~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Null Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 TypeNull::TypeNull(){}
 
 TypeNull::~TypeNull(){}
@@ -50,24 +61,75 @@ char* TypeNull::toString(){
   return (char *) "null";
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~ClassType~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Class Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 TypeClass::TypeClass(char* n){
   name = n;
+  parent = NULL;
+  symbolTable = new SymbolTable();
 }
 
 TypeClass::~TypeClass(){
   delete name;
+  delete parent;
+  delete symbolTable;
 }
 
 char* TypeClass::getName(){
   return name;
 }
 
+bool TypeClass::getItem(char* n, Type* type){
+  return symbolTable->lookup(n,type);
+}
+
+void TypeClass::add(char* n, Type* type){
+  symbolTable->install(n,type);
+}
+
+void TypeClass::setParent(Type* p){
+  parent = p;
+}
+
 char* TypeClass::toString(){
   return getName();
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~TypeModule~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Method Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+TypeMethod::TypeMethod(char* n, Type* o){
+  name = n;
+  owner = o;
+  symbolTable = new SymbolTable();
+}
+
+TypeMethod::~TypeMethod(){
+  delete name;
+  delete owner;
+  delete symbolTable;
+}
+
+char* TypeMethod::getName(){
+  return name;
+}
+
+bool TypeMethod::getItem(char* n, Type* type){
+  return symbolTable->lookup(n,type);
+}
+
+void TypeMethod::add(char* n, Type* type){
+  symbolTable->install(n,type);
+}
+
+char* TypeMethod::toString(){
+  return getName();
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * TypeModule Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 TypeModule::TypeModule(){
   intTypeInternal = (Type*) new TypeInt();
   errorTypeInternal = (Type*) new TypeError();

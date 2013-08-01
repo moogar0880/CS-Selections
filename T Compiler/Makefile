@@ -1,4 +1,4 @@
-# Makefile for the compiler for the Simp language
+# Makefile for the compiler for the T language
 #
 # target tc builds the standard compiler
 #

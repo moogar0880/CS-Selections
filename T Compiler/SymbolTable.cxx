@@ -6,8 +6,12 @@
 #include <string.h>
 #include <iostream>
 using namespace std;
+#include "Type.h"
 #include "SymbolTable.h"
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * SymbolTableRecord (STR) Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 SymbolTableRecord::SymbolTableRecord(char* n, Type* t){
   next = NULL;
   name = n;
@@ -30,6 +34,9 @@ void SymbolTableRecord::dump(){
   if(next != NULL) next->dump();
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * SymbolTable Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 SymbolTable::SymbolTable(){
   head = NULL;
 }

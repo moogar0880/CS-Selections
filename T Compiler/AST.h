@@ -1,7 +1,7 @@
 #ifndef _AST_H
 #define _AST_H
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * Abstract Syntax Tree for T language
+ * Abstract Syntax Tree (AST) for T language
  *
  * the dump methods are for debugging - they display the AST to stderr.
  *
@@ -9,12 +9,14 @@
  *
  * the encode methods perform code generation
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
 #include "Type.h"
 #include "SymbolTable.h"
 #include <algorithm>    // std::find
 
-// abstract class: all AST nodes derived from this
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract AST_Node class
+ *  This abstract class will be the basis for all other AST classes
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class AST_Node{
   protected:
     int line;
@@ -33,7 +35,10 @@ class AST_Node{
     AST_Node();
 };
 
-// abstract class: all list nodes derived from this
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract AST_List class
+ *  This abstract class is the basis for all list classes
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class AST_List: public AST_Node{
   protected:
     AST_Node* item;
@@ -56,7 +61,10 @@ class AST_List: public AST_Node{
     AST_List(AST_Node* newItem, AST_List* list);
 };
 
-// abstract class: all statements derived from this
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract AST_Statement class
+ *  This abstract class is the basis for all statement classes
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class AST_Statement: public AST_Node{
   public:
     virtual ~AST_Statement();
@@ -65,18 +73,10 @@ class AST_Statement: public AST_Node{
     AST_Statement();
 };
 
-// list of statements
-class AST_StatementList: public AST_List{
-  protected:
-    char* owner;
-    bool ownerSet;
-  public:
-    ~AST_StatementList();
-    AST_StatementList(AST_Statement* statement, AST_List* restOfList);
-    AST_StatementList(AST_Statement* statement);
-};
-
-// abstract class: all expression nodes dervived from this
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract AST_Expression class
+ *  This abstract class is the basis for all expression classes
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class AST_Expression: public AST_Node{
   public:
     virtual ~AST_Expression();
@@ -87,13 +87,30 @@ class AST_Expression: public AST_Node{
     AST_Expression();
 };
 
-// abstract Literal wrapper Class
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract AST_Expression class
+ *  This abstract class is the basis for all literal classes
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class AST_Literal: public AST_Expression{
   public:
     virtual ~AST_Literal();
 
   protected:
     AST_Literal();
+};
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Abstract AST_StatementList class
+ *  This class represents a list of AST_Statements
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+class AST_StatementList: public AST_List{
+  protected:
+    char* owner;
+    bool ownerSet;
+  public:
+    ~AST_StatementList();
+    AST_StatementList(AST_Statement* statement, AST_List* restOfList);
+    AST_StatementList(AST_Statement* statement);
 };
 
 class AST_ExpressionStatement: public AST_Statement{
