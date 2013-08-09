@@ -47,5 +47,6 @@ class SymbolTable{
     bool install(char* name, Type* type);
 
     void dump();
+    SymbolTableRecord* getList();
 };
 #endif

@@ -11,7 +11,6 @@ using namespace std;
 
 // global symbol table is in main.cxx
 extern SymbolTable* symbolTable;
-extern std::vector<AST_Class*> globalClassList;
 // global type module is in main.cxx
 extern TypeModule* types;
 extern bool terminalErrors;
@@ -104,6 +103,7 @@ AST_Node* AST_Assignment::analyze(){
   }
   // add a convert node if the types are not the same
   if (lhs->type != rhs->type){
+    cerr << "AST_Convert created in assignment" << endl;
     AST_Expression* newNode = new AST_Convert(rhs);
 
     newNode->type = lhs->type;
@@ -314,10 +314,10 @@ AST_Node* AST_Equality::analyze(){
     rName = ((AST_Variable*)(right))->name;
     symbolTable->lookup(lName, lTypeFromSymbolTable);
     symbolTable->lookup(rName, rTypeFromSymbolTable);
-    AST_Class* l;
-    AST_Class* r;
-    std::vector<AST_Class*>::iterator it;
-    for(it = globalClassList.begin(); it != globalClassList.end(); ++it ){
+    TypeClass* l;
+    TypeClass* r;
+    std::vector<TypeClass*>::iterator it;
+    for(it = types->getClassList().begin(); it != types->getClassList().end(); ++it ){
       if( strcmp((*it)->getName(),lTypeFromSymbolTable->toString()) == 0 )
         l = (*it);
       if( strcmp((*it)->getName(),rTypeFromSymbolTable->toString()) == 0 )
@@ -415,15 +415,36 @@ AST_Node* AST_Cast::analyze(){
 }
 
 AST_Node* AST_Class::analyze(){
-  if( parent == NULL )
-    parent = types->classType((char*)("Object"));
+  if( parent == NULL ){
+    TypeClass* t = (TypeClass*)(types->classType(name));
+    if( t != NULL )
+      t->setParent(types->classType((char*)("Object")));
+  }
+  else{
+    TypeClass* t = (TypeClass*)(types->classType(name));
+    if( t != NULL )
+      t->setParent(parent);
+  }
   ((AST_List*)(fields))->setOwner(name);
   ((AST_List*)(fields))->analyze();
   return (AST_Node*) this;
 }
 
 AST_Node* AST_FieldReference::analyze(){
-  //cerr << "AST_FieldReference::analyze() not yet implemented\n";
+  //owner = a, variable = i
+  symbolTable->lookup(owner, type);
+  if( types->classType(((TypeClass*)(type))->toString()) == NULL ){
+    cerr << "dynamic_cast caught a bad cast: " << ((TypeClass*)(type))->toString() << endl;
+    terminalErrors = true;
+    type = types->errorType();
+  }
+  else{
+    char* name = ((TypeClass*)(type))->toString();
+    if( !types->classType(name)->getItem(variable, type) ){
+      terminalErrors = true;
+      type = types->errorType();
+    }
+  }
   return (AST_Node*) this;
 }
 
@@ -445,7 +466,6 @@ AST_Node* AST_ArgumentsList::analyze(){
 
 AST_Node* AST_Null::analyze(){
   //cerr << "AST_Null::analyze() not yet implemented\n";
-  // return NULL;
   return (AST_Node*) this;
 }
 

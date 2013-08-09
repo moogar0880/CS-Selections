@@ -14,6 +14,7 @@ int getCurrentSourceLineNumber();
 extern SymbolTable* symbolTable;
 // global type module is in main.cxx
 extern TypeModule* types;
+extern bool terminalErrors;
 // list of all valid classes, containing all their information
 std::vector<AST_Class*> globalClassList;
 
@@ -567,10 +568,14 @@ AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
     list->concat(l2);
   }
 
-  AST_Variable* objectName = new AST_Variable(((char*) "Object"));
-  // Object class has no parent and no non-method fields for phase 3
-  AST_Class* objectClass = new AST_Class( objectName, NULL, NULL );
-  globalClassList.push_back( objectClass );
+  //AST_Variable* objectName = new AST_Variable(((char*) "Object"));
+  //Object class has no parent and no non-method fields for phase 3
+  //AST_Class* objectClass = new AST_Class( objectName, NULL, NULL );
+  TypeClass* obj = (TypeClass*)(types->createNewClassType((char *)"Object"));
+  if( obj != NULL ){
+    obj->setParent(NULL);
+    //need to add Object's constructor/destructor
+  }
   if( list != NULL )
     listConvert(list);
 }
@@ -578,14 +583,18 @@ AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
 // Helper function to convert an AST_List into a Vector
 void AST_CompilationUnit::listConvert(AST_List* l){
   if( l != NULL ){
-    globalClassList.push_back((AST_Class*)(l->getItem()));
+    AST_Class* classObject = (AST_Class*)(l->getItem());
+    TypeClass* c = (TypeClass*)(types->createNewClassType(classObject->getName()));
+    if( c != NULL ){
+      c->setParent(classObject->getParent());
+    }
     listConvert(l->getRestOfList());
   }
 }
 
 // Helper function to determine whether two AST_Classes are related
 bool AST_Node::areComparable(AST_Node* l, AST_Node* r){
-  AST_Class* left = (AST_Class*) l;
+  /*AST_Class* left = (AST_Class*) l;
   AST_Class* right = (AST_Class*) r;
   std::vector<AST_Class*>::iterator it;
   it = std::find(globalClassList.begin(), globalClassList.end(), left);
@@ -597,7 +606,7 @@ bool AST_Node::areComparable(AST_Node* l, AST_Node* r){
         return true;
       ++it;
     }
-  }
+  }*/
   return false; // classes are not related
 }
 
@@ -666,19 +675,36 @@ void AST_FieldDeclaration::dump(){
 
 void AST_FieldDeclaration::setOwner(char* n){
   owner = n;
+  AST_Variable* scan = (AST_Variable*)(list->getItem());
+  Type* t = NULL;
+  AST_VariableList* l = (AST_VariableList*)(list->getRestOfList());
+  while(scan != NULL){
+    if( types->classType(n)->getItem(scan->name, t) ){
+      cerr << "ERROR: Redeclaration of class " << n << "'s variable " << scan << endl;
+      terminalErrors = true;
+      type = types->errorType();
+    }
+    else{
+      types->classType(n)->add(scan->name,type);
+    }
+    if( l != NULL ){
+      l = (AST_VariableList*)(l->getRestOfList());
+      scan = (AST_Variable*)(list->getItem());
+    }
+    else
+      scan = NULL;
+  }
   ownerSet = true;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_FieldReference Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-AST_FieldReference::AST_FieldReference(AST_Expression* typ, AST_Expression* id){
+ AST_FieldReference::AST_FieldReference(AST_Expression* o, AST_Expression* v){
   // type = types->classType(((AST_Variable*)(typ))->name);
-  cerr << ((AST_Variable*)(id))->name << endl;
-  symbolTable->lookup(((AST_Variable*)(typ))->name, type);
-  cerr << "Type = " << type->toString() << endl;
-  if( type == NULL )
-    type = types->noType();
+  type = types->noType();
+  owner = ((AST_Variable*)(o))->name;
+  variable = ((AST_Variable*)(v))->name;
 }
 
 AST_FieldReference::~AST_FieldReference(){

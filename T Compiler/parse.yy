@@ -693,28 +693,21 @@ void yyerror(const char *s){
 
 void classDump(){
   cerr << "Classes\n--------\n";
-  std::vector<AST_Class*>::iterator it;
-  for(it = globalClassList.begin(); it != globalClassList.end(); ++it ){
+  std::vector<TypeClass*> classes = types->getClassList();
+  std::vector<TypeClass*>::iterator it;
+  for(it = classes.begin(); it != classes.end(); ++it ){
     cerr << "Class " << (*it)->getName() << endl;
-    if( strcmp((*it)->getName(), "Object") != 0 ){
+    if( (*it)->getParent() != NULL ){
       cerr << "\tParent: " << ((*it)->getParent())->toString() << endl;
     }
     else{
       cerr << "\tParent: NULL" << endl;
     }
-    AST_StatementList* l = (*it)->getFields();
-    if( l != NULL ){
-      cerr << "\tFields:\n";
-      /*AST_VariableList* vl = (AST_VariableList*)(l->getItem());
-      while( l->getRestOfList() != NULL && vl ){
-        Type* typeFromSymbolTable;
-        //AST_Node* n = ((AST_List*)(vl))->getItem();
-        char* name = ((AST_Variable*)n)->name;
-        symbolTable->lookup(name, typeFromSymbolTable);
-        cerr << typeFromSymbolTable << " " << name << endl;
-        l = (AST_StatementList*)(l->getRestOfList());
-        vl = (AST_VariableList*)(l->getItem());
-      }*/
+    cerr << "\tFields:" << endl;
+    SymbolTableRecord* scan = (*it)->getSymbolTable()->getList();
+    while(scan != NULL){
+      cerr << "\t\t" << scan->type->toString() << " " << scan->name << endl;
+      scan = scan->next;
     }
   }
 }

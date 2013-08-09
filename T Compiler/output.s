@@ -7,7 +7,12 @@ main:
 	movl	%esp, %ebp
 #	Object Class VMT
 	.data
-Object$VMT:
+A$VMT:
+	.long	0
+	.text
+#	Object Class VMT
+	.data
+B$VMT:
 	.long	0
 	.text
 #	MainFunction

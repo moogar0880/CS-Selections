@@ -79,5 +79,12 @@ bool SymbolTable::install(char* name, Type* type){
 }
 
 void SymbolTable::dump(){
-  head->dump();
+  if( head != NULL )
+    head->dump();
+  else
+    cerr<<"SymbolTable EMPTY\n";
+}
+
+SymbolTableRecord* SymbolTable::getList(){
+  return head;
 }

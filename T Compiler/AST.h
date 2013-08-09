@@ -430,6 +430,7 @@ class AST_Class: public AST_Statement{
     char* name;
     Type* parent;
     AST_StatementList* fields;
+    Type* myType;
 
   public:
     ~AST_Class();
@@ -521,6 +522,8 @@ class AST_FieldDeclaration: public AST_Statement{
 class AST_FieldReference: public AST_Expression{
   protected:
     Type* type;
+    char* owner;
+    char* variable;
   public:
     AST_FieldReference(AST_Expression* typ, AST_Expression* id);
     ~AST_FieldReference();

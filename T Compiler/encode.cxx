@@ -12,8 +12,6 @@ using namespace std;
 
 // global type module is in main.cxx
 extern TypeModule* types;
-// global class list in AST.cxx
-extern std::vector<AST_Class*> globalClassList;
 int labelCount = 0;
 int whileCount = 0;
 // output the prelude code
@@ -331,9 +329,14 @@ void AST_Null::encode(){
 
 void AST_CompilationUnit::encode(){
   // generate Object Class code immediately for ease
-  std::vector<AST_Class*>::iterator it;
-  it = globalClassList.begin();
-  (*it)->encode();
+  std::vector<TypeClass*>::iterator it;
+  //it = globalClassList.begin();
+  //(*it)->encode();
+  /*AST_Class* scan = (AST_Class*)(list->getItem());
+  while(scan != NULL){
+    scan->encode();
+    scan = list->getRestOfList();
+  }*/
 
   if( list != NULL )
     list->encode();

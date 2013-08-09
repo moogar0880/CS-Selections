@@ -2,8 +2,8 @@
 #define _TYPE_H
 #include <vector>
 #include <string.h>
-//#include "SymbolTable.h"
 class SymbolTable;
+class SymbolTableRecord;
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Type representation for T language
  *
@@ -84,11 +84,14 @@ class TypeClass: public Type{
     TypeClass(char* n);
     ~TypeClass();
 
-    bool  getItem(char* n, Type* type);
+    bool  getItem(char* n, Type*& type);
     void  add(char* n, Type* type);
     void  setParent(Type* p);
+    TypeClass* getParent();
     char* toString();
     char* getName();
+    void  encode();
+    SymbolTable* getSymbolTable();
 };
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,11 +103,16 @@ class TypeClass: public Type{
     Type* owner;
     SymbolTable* symbolTable; //For storing local variables
     //dynamic parameter storage, needs to be a list because order matters
-    //std::vector<SymbolTableRecord*> parameters;
-  public:
-    TypeMethod(char* n, Type* owner);
-    ~TypeMethod();
+    std::vector<SymbolTableRecord*> parameters;
 
+  public:
+    TypeMethod(char* n, Type* owner, bool cons, bool dest);
+    ~TypeMethod();
+    bool isConstructor;
+    bool isDestructor;
+
+    bool  hasParam(char* n);
+    bool  addParam(char* n, Type* type);
     bool  getItem(char* n, Type* type);
     void  add(char* n, Type* type);
     char* toString();
@@ -129,8 +137,9 @@ class TypeModule{
     Type* errorType();
     Type* noType();
     Type* nullType();
-    Type* classType(char* name);
-    bool createNewClassType(char* n); //returns false if class already defined
-    bool containsClassType(char* n); //returns false on error
+    TypeClass* classType(char* name);
+    Type* createNewClassType(char* n); //returns false if class already defined
+    bool containsClassType(char* n);   //returns false on error
+    std::vector<TypeClass*> getClassList(); //returns class vector
 };
 #endif

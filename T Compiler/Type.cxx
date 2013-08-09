@@ -80,7 +80,7 @@ char* TypeClass::getName(){
   return name;
 }
 
-bool TypeClass::getItem(char* n, Type* type){
+bool TypeClass::getItem(char* n, Type*& type){
   return symbolTable->lookup(n,type);
 }
 
@@ -92,6 +92,14 @@ void TypeClass::setParent(Type* p){
   parent = p;
 }
 
+TypeClass* TypeClass::getParent(){
+  return (TypeClass*)parent;
+}
+
+SymbolTable* TypeClass::getSymbolTable(){
+  return symbolTable;
+}
+
 char* TypeClass::toString(){
   return getName();
 }
@@ -99,10 +107,12 @@ char* TypeClass::toString(){
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Method Type class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-TypeMethod::TypeMethod(char* n, Type* o){
-  name = n;
+TypeMethod::TypeMethod(char* n, Type* o, bool cons, bool dest){
+  name  = n;
   owner = o;
   symbolTable = new SymbolTable();
+  isConstructor = cons;
+  isDestructor  = dest;
 }
 
 TypeMethod::~TypeMethod(){
@@ -113,6 +123,23 @@ TypeMethod::~TypeMethod(){
 
 char* TypeMethod::getName(){
   return name;
+}
+
+bool TypeMethod::hasParam(char* n){
+  std::vector<SymbolTableRecord*>::iterator it;
+  for( it = parameters.begin(); it != parameters.end(); ++it){
+    if( strcmp((*it)->name,n) == 0 )
+      return false;
+  }
+  return true;
+}
+
+bool TypeMethod::addParam(char* n, Type* type){
+  if( !hasParam(n) ){
+    parameters.push_back(new SymbolTableRecord(n,type));
+    return true;
+  }
+  return false; //Can not have parameters with the same name
 }
 
 bool TypeMethod::getItem(char* n, Type* type){
@@ -148,13 +175,15 @@ bool TypeModule::containsClassType(char* n){
 }
 
 // Create new ClassType with name n
-bool TypeModule::createNewClassType(char * n){
+Type* TypeModule::createNewClassType(char * n){
   if( containsClassType(n) ){ //compile time error
-    return false;
+    return NULL;
   }
-  else
-    classTypes.push_back((TypeClass*) new TypeClass(n));
-  return true;
+  else{
+    TypeClass* t = new TypeClass(n);
+    classTypes.push_back(t);
+    return t;
+  }
 }
 
 TypeModule::~TypeModule(){
@@ -180,16 +209,20 @@ Type* TypeModule::nullType(){
   return nullTypeInternal;
 }
 
-Type* TypeModule::classType(char* name){
+TypeClass* TypeModule::classType(char* name){
   std::vector<TypeClass*>::iterator it;
   // cerr << "\niterating over ClassTypes\n-------------------------\n";
   for(it = classTypes.begin(); it != classTypes.end(); ++it ){
     // cerr << "iterator = " << (*it)->getName() << ", name = " << name << endl;
     if( strcmp((*it)->getName(),name) == 0 ){
       // cerr << "-------------------------\n";
-      return (Type*)(*it);
+      return *it;
     }
   }
   // cerr << "-------------------------\n\n";
   return NULL;
+}
+
+std::vector<TypeClass*> TypeModule::getClassList(){
+  return classTypes;
 }
