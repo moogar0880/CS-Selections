@@ -1,0 +1,11 @@
+abc
+ABC
+aBc
+AbC
+A_b_C
+a1
+a1b2
+a1b2_
+abcdefghijklmnopqrstuvwxyz1234567890_
+0A
+_A
