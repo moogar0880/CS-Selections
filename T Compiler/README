@@ -4,7 +4,7 @@ The compiler reads a T program from stdin. And it writes a dump
 of the AST for the program (after semantic analysis) to stderr. The
 AST is dumped in prefix form, one AST node per line.
 
-To build the compiler: make
+To build the compiler: make tc
 
 To run the compiler: ./tc <input.t >output.s
 
