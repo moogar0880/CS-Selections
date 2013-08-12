@@ -17,9 +17,9 @@ extern bool terminalErrors;
 int whileLoopCount = 0;
 
 AST_Node* AST_List::analyze(){
-  if( ownerSet ){
+  /*if( ownerSet ){
     ((AST_FieldDeclaration*)(item))->setOwner(owner);
-  }
+  }*/
   item = item->analyze();
   if (restOfList != NULL) restOfList = (AST_List*) restOfList->analyze();
   return (AST_Node*) this;
@@ -40,6 +40,9 @@ AST_Node* AST_Variable::analyze(){
 
   if(symbolTable->lookup(searchName, typeFromSymbolTable)){
     type = typeFromSymbolTable;
+    if( type != types->intType() ){
+      type = types->classType(type->toString());
+    }
   }
   else{
     cerr << line << ": variable " << name << " is not declared!\n";
@@ -54,7 +57,7 @@ AST_Node* AST_Variable::analyze(){
 
 AST_Node* AST_VariableList::analyze(Type* t){
   if( ownerSet ){
-    ((AST_Variable*)(item))->setOwner(owner);
+    //((AST_Variable*)(item))->setOwner(owner);
     if(!symbolTable->install(((AST_Variable*)(item))->maskedName, t)){
       cerr << line << ": duplicate declaration for " << t->toString() << " " <<
         ((AST_Variable*)(item))->maskedName << endl;
@@ -102,12 +105,10 @@ AST_Node* AST_Assignment::analyze(){
     return (AST_Node*) this;
   }
   // add a convert node if the types are not the same
-  if (lhs->type != rhs->type){
-    cerr << "AST_Convert created in assignment" << endl;
+  if(lhs->type != rhs->type){
     AST_Expression* newNode = new AST_Convert(rhs);
 
     newNode->type = lhs->type;
-
     rhs = newNode;
   }
   return (AST_Node*) this;
@@ -425,7 +426,25 @@ AST_Node* AST_Class::analyze(){
     if( t != NULL )
       t->setParent(parent);
   }
-  ((AST_List*)(fields))->setOwner(name);
+  //Add fields to symbolTable
+  AST_Statement* scan;
+  AST_StatementList* rol;
+  if( fields != NULL ){
+    scan = (AST_Statement*)(fields->getItem());
+    rol  = (AST_StatementList*)(fields->getRestOfList());
+  }
+  while(scan != NULL){
+    if( !scan->declarationType ){ //Field
+      ((AST_FieldDeclaration*)(scan))->setOwner(name);
+    }
+    //else{} //Method
+    if( rol != NULL ){
+      scan = (AST_Statement*)(rol->getItem());
+      rol  = (AST_StatementList*)(rol->getRestOfList());
+    }
+    else
+      scan = NULL;
+  }
   ((AST_List*)(fields))->analyze();
   return (AST_Node*) this;
 }
@@ -434,7 +453,7 @@ AST_Node* AST_FieldReference::analyze(){
   //owner = a, variable = i
   symbolTable->lookup(owner, type);
   if( types->classType(((TypeClass*)(type))->toString()) == NULL ){
-    cerr << "dynamic_cast caught a bad cast: " << ((TypeClass*)(type))->toString() << endl;
+    cerr << "Bad cast: " << ((TypeClass*)(type))->toString() << endl;
     terminalErrors = true;
     type = types->errorType();
   }
@@ -445,18 +464,27 @@ AST_Node* AST_FieldReference::analyze(){
       type = types->errorType();
     }
   }
-  return (AST_Node*) this;
+  // always put Deref node on top of a variable
+  AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
+  ret->type = type;
+  return (AST_Node*) ret;
 }
 
 AST_Node* AST_FieldDeclaration::analyze(){
-  if( ownerSet )
-    list->setOwner(owner);
   list->analyze(type);
   return (AST_Node*) this;
 }
 
 AST_Node* AST_ClassInstance::analyze(){
-  //cerr << "AST_ClassInstance::analyze() not yet implemented\n";
+  if( types->classType(type->toString()) == NULL ){
+    cerr << line << ": BUG in AST_ClassInstance::analyze: class " <<
+      type->toString() << " does not exist\n";
+    type = types->errorType();
+    terminalErrors = true;
+  }
+  else{
+    type = types->classType(type->toString());
+  }
   return (AST_Node*) this;
 }
 

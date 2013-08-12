@@ -79,7 +79,7 @@ class TypeClass: public Type{
   protected:
     char* name;
     Type* parent;
-    SymbolTable* symbolTable;
+    SymbolTable* classTable;
   public:
     TypeClass(char* n);
     ~TypeClass();

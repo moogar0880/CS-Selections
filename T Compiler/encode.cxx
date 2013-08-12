@@ -12,6 +12,7 @@ using namespace std;
 
 // global type module is in main.cxx
 extern TypeModule* types;
+extern SymbolTable* symbolTable;
 int labelCount = 0;
 int whileCount = 0;
 // output the prelude code
@@ -372,31 +373,48 @@ void AST_Cast::encode(){
 
 void AST_FieldReference::encode(){
   cout << "#\tField Reference\n";
+  cout << "\tpushl\t$mainvar$" << owner << endl;
   cout << "\tpushl\t$" << line << "\n";
   cout << "\tcall\tRTS_checkForNullReference\n";
   cout << "\tpopl\t%eax\n";
   cout << "\tpopl\t%eax\n";
-  cout << "\taddl\t$[offset], %eax\n";
+  Type* t;
+  symbolTable->lookup(owner,t);
+  SymbolTableRecord* scan = types->classType(t->toString())->getSymbolTable()->head;
+  int offset = 4;
+  while(scan != NULL){
+    if( !strcmp(scan->name, variable) )
+      break;
+    offset += 4;
+    scan = scan->next;
+  }
+  cout << "\taddl\t$" << offset << ", %eax\n";
   cout << "\tpushl\t%eax\n";
 }
 
 void AST_FieldDeclaration::encode(){
-
+  //Empty...for now
 }
 
 void AST_ClassInstance::encode(){
-  int length = 0; //length of the object in 4-byte words
+  int length = 4; //length of the object in 4-byte words
   char* className = (((TypeClass*)type)->toString());
+  SymbolTableRecord* scan = types->classType(className)->getSymbolTable()->head;
+  while( scan != NULL ){
+    length += 4;
+    scan = scan->next;
+  }
+  //cerr << "Total Length of " << className << " is " << length << endl;
   cout << "#\t" << className << " Class Instance\n";
   cout << "\tpushl\t$4\n";
   cout << "\tpushl\t$" << length << "\n";
   cout << "\tcall\tcalloc\n";
   cout << "\taddl\t$8, %esp\n";
   cout << "\tcmpl\t$0, %eax\n";
-  cout << "\tjne\t" << ++labelCount << "\n";
+  cout << "\tjne\t" << "\tL" << ++labelCount << "\n";
   cout << "\tpushl\t$" << line << "\n";
   cout << "\tcall\tRTS_outOfMemoryError\n";
-  cout << labelCount << ":\n";
+  cout << "L" << labelCount << ":\n";
   cout << "\tmovl\t$" << className << "$VMT, (%eax)\n";
   cout << "\tpushl\t%eax\n";
 }
@@ -411,7 +429,7 @@ void AST_EmptyStatement::encode(){
 
 void AST_Convert::encode(){
   left->encode();
-
+  cerr << line << ": Declared type of Convert = " << type->toString() << endl;
   if (type == types->intType()){
     cout << "#\tConvert to int\n";
     // load value into fp register

@@ -68,6 +68,7 @@ class AST_List: public AST_Node{
 class AST_Statement: public AST_Node{
   public:
     virtual ~AST_Statement();
+    int declarationType;
 
   protected:
     AST_Statement();
@@ -492,7 +493,6 @@ class AST_ArgumentsList: public AST_Node{
 
 class AST_ClassInstance: public AST_Expression{
   protected:
-    Type* type;
     AST_ArgumentsList* arguments;
   public:
     ~AST_ClassInstance();
@@ -521,7 +521,6 @@ class AST_FieldDeclaration: public AST_Statement{
 
 class AST_FieldReference: public AST_Expression{
   protected:
-    Type* type;
     char* owner;
     char* variable;
   public:

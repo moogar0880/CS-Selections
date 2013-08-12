@@ -28,7 +28,7 @@ class SymbolTableRecord{
  *  The SymbolTable Proper
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class SymbolTable{
-  protected:
+  public:
     SymbolTableRecord* head;
 
   public:

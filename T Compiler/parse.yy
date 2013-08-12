@@ -127,7 +127,6 @@ program
     if( classes ){
       classDump();
     }
-
     if( !terminalErrors ){
       $$->encode();
     }

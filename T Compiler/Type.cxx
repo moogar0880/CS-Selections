@@ -67,13 +67,13 @@ char* TypeNull::toString(){
 TypeClass::TypeClass(char* n){
   name = n;
   parent = NULL;
-  symbolTable = new SymbolTable();
+  classTable = new SymbolTable();
 }
 
 TypeClass::~TypeClass(){
   delete name;
   delete parent;
-  delete symbolTable;
+  delete classTable;
 }
 
 char* TypeClass::getName(){
@@ -81,11 +81,11 @@ char* TypeClass::getName(){
 }
 
 bool TypeClass::getItem(char* n, Type*& type){
-  return symbolTable->lookup(n,type);
+  return classTable->lookup(n,type);
 }
 
 void TypeClass::add(char* n, Type* type){
-  symbolTable->install(n,type);
+  classTable->install(n,type);
 }
 
 void TypeClass::setParent(Type* p){
@@ -97,7 +97,7 @@ TypeClass* TypeClass::getParent(){
 }
 
 SymbolTable* TypeClass::getSymbolTable(){
-  return symbolTable;
+  return classTable;
 }
 
 char* TypeClass::toString(){

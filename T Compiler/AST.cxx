@@ -167,7 +167,7 @@ AST_BinaryOperator::AST_BinaryOperator(AST_Expression* l, AST_Expression* r){
  * AST_Unary Operator Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_UnaryOperator::~AST_UnaryOperator(){
-  delete left;;
+  delete left;
 }
 
 AST_UnaryOperator::AST_UnaryOperator(AST_Expression* l){
@@ -515,9 +515,6 @@ AST_Class::AST_Class(AST_Expression* n, AST_StatementList* l, Type* p){
   parent = p;
   fields = l;
 
-  if( fields != NULL )
-    fields->setOwner(name);
-
   if( !types->createNewClassType(name) ){
     int l = ((AST_Node*)this)->getLineNumber();
     cerr << l << ": Redeclaration of ClassType " << name << endl;
@@ -665,31 +662,36 @@ AST_FieldDeclaration::AST_FieldDeclaration(Type* t, AST_VariableList* l){
   type = t;
   list = l;
   ownerSet = false;
+  declarationType = 0;
 }
 
 AST_FieldDeclaration::~AST_FieldDeclaration(){}
 
 void AST_FieldDeclaration::dump(){
-  cerr << "Field Declaration of type " << type << "\n";
+  cerr << "Field Declaration of type " << type->toString() << endl;
 }
 
 void AST_FieldDeclaration::setOwner(char* n){
   owner = n;
-  AST_Variable* scan = (AST_Variable*)(list->getItem());
+  AST_Variable* scan = NULL;
+  AST_VariableList* rol;
+  if( list != NULL ){
+    scan = (AST_Variable*)(list->getItem());
+    rol = (AST_VariableList*)(list->getRestOfList());
+  }
   Type* t = NULL;
-  AST_VariableList* l = (AST_VariableList*)(list->getRestOfList());
   while(scan != NULL){
     if( types->classType(n)->getItem(scan->name, t) ){
-      cerr << "ERROR: Redeclaration of class " << n << "'s variable " << scan << endl;
+      cerr << "ERROR: Redeclaration of class " << n << "'s variable " << scan->name << endl;
       terminalErrors = true;
       type = types->errorType();
     }
     else{
       types->classType(n)->add(scan->name,type);
     }
-    if( l != NULL ){
-      l = (AST_VariableList*)(l->getRestOfList());
-      scan = (AST_Variable*)(list->getItem());
+    if( rol != NULL ){
+      scan = (AST_Variable*)(rol->getItem());
+      rol = (AST_VariableList*)(rol->getRestOfList());
     }
     else
       scan = NULL;
