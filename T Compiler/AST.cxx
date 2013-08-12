@@ -42,7 +42,6 @@ int AST_Node::getLineNumber(){
 AST_List::AST_List(AST_Node* newItem, AST_List* list){
   item = newItem;
   restOfList = list;
-  ownerSet = false;
 }
 
 AST_List::~AST_List(){
@@ -72,11 +71,6 @@ AST_List* AST_List::getRestOfList(){
   return restOfList;
 }
 
-void AST_List::setOwner(char* n){
-  owner = n;
-  ownerSet = true;
-}
-
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_Statement Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -98,10 +92,7 @@ AST_Literal::~AST_Literal(){}
 AST_StatementList::AST_StatementList(AST_Statement* s,
   AST_List* l) : AST_List((AST_Node*) s, l){}
 
-AST_StatementList::~AST_StatementList(){
-  if( owner != NULL )
-    delete owner;
-}
+AST_StatementList::~AST_StatementList(){}
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_Expression Class
@@ -203,30 +194,12 @@ void AST_Variable::dump(){
   cerr << "Variable " << name << endl;
 }
 
-void AST_Variable::setOwner(char* n){
-  owner = n;
-  setMaskedName();
-}
-
-// masks the variables actual name for class variables
-// being inserted into the symbol table during analysis
-void AST_Variable::setMaskedName(){
-  int size = strlen(owner) + strlen(name);
-  char tmp[size];
-  strcpy(tmp, owner);
-  strcat(tmp, name);
-  maskedName = (char*)tmp;
-  maskSet = true;
-}
-
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_VariableList Class
  *  Implemented as a linked list of AST_Expressions
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_VariableList::AST_VariableList(AST_Expression* e,
-  AST_VariableList* l):AST_List((AST_Node*)e, l){
-  ownerSet = false;
-}
+  AST_VariableList* l):AST_List((AST_Node*)e, l){}
 
 AST_VariableList::~AST_VariableList(){}
 
@@ -234,11 +207,6 @@ void AST_VariableList::dump(){
   ((AST_Expression*)(item))->dump();
   if (restOfList != NULL) restOfList->dump();
   else cerr << "End of List\n";
-}
-
-void AST_VariableList::setOwner(char* n){
-  owner = n;
-  ownerSet = true;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

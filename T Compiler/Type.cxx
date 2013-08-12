@@ -211,15 +211,11 @@ Type* TypeModule::nullType(){
 
 TypeClass* TypeModule::classType(char* name){
   std::vector<TypeClass*>::iterator it;
-  // cerr << "\niterating over ClassTypes\n-------------------------\n";
   for(it = classTypes.begin(); it != classTypes.end(); ++it ){
-    // cerr << "iterator = " << (*it)->getName() << ", name = " << name << endl;
     if( strcmp((*it)->getName(),name) == 0 ){
-      // cerr << "-------------------------\n";
       return *it;
     }
   }
-  // cerr << "-------------------------\n\n";
   return NULL;
 }
 

@@ -1,6 +1,6 @@
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST methods for semantic analysis
- * code gen is in encode.cxx
+ * code gen is found in encode.cxx
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #include <iostream>
 using namespace std;
@@ -16,29 +16,35 @@ extern TypeModule* types;
 extern bool terminalErrors;
 int whileLoopCount = 0;
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_List semantic analysis
+ *  Call analyze on the list item, if the rest of the list is not NULL
+ *  recurse down and call analyze on the rest of the list
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_List::analyze(){
-  /*if( ownerSet ){
-    ((AST_FieldDeclaration*)(item))->setOwner(owner);
-  }*/
   item = item->analyze();
   if (restOfList != NULL) restOfList = (AST_List*) restOfList->analyze();
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_IntegerLiteral semantic analysis
+ *  Nothing to be done for Integer Literal analysis, type already set
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_IntegerLiteral::analyze(){
-  // nothing to be done; type already set
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Variable semantic analysis
+ *  Do symbol table lookup for variable name and pull type out if found
+ *  If not found in symbol table set to errorType
+ *
+ *  Note: Always put Deref node on top of a variable
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Variable::analyze(){
   Type* typeFromSymbolTable;
-  char* searchName;
-  if( maskSet )
-    searchName = maskedName;
-  else
-    searchName = name;
-
-  if(symbolTable->lookup(searchName, typeFromSymbolTable)){
+  if(symbolTable->lookup(name, typeFromSymbolTable)){
     type = typeFromSymbolTable;
     if( type != types->intType() ){
       type = types->classType(type->toString());
@@ -48,26 +54,22 @@ AST_Node* AST_Variable::analyze(){
     cerr << line << ": variable " << name << " is not declared!\n";
     type = types->errorType();
   }
-
-  // always put Deref node on top of a variable
+  //Set Deref node
   AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
   ret->type = type;
   return (AST_Node*) ret;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_VariableList semantic analysis
+ *  If VariableList item Variable can be found in symbol table analyze it
+ *  If VariableList item can not be found in symbol table print error
+ *  If VariableList restOfList is not NULL recurse down the list
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_VariableList::analyze(Type* t){
-  if( ownerSet ){
-    //((AST_Variable*)(item))->setOwner(owner);
-    if(!symbolTable->install(((AST_Variable*)(item))->maskedName, t)){
-      cerr << line << ": duplicate declaration for " << t->toString() << " " <<
-        ((AST_Variable*)(item))->maskedName << endl;
-    }
-  }
-  else{
-    if(!symbolTable->install(((AST_Variable*)(item))->name, t)){
-      cerr << line << ": duplicate declaration for " << t->toString() << " " <<
-        ((AST_Variable*)(item))->name << endl;
-    }
+  if(!symbolTable->install(((AST_Variable*)(item))->name, t)){
+    cerr << line << ": duplicate declaration for " << t->toString() << " " <<
+      ((AST_Variable*)(item))->name << endl;
   }
   ((AST_Variable*)(item))->analyze();
   if(restOfList != NULL)
@@ -75,21 +77,39 @@ AST_Node* AST_VariableList::analyze(Type* t){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_MainFunction semantic analysis
+ *  Analyze the MainFunction's StatementList
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_MainFunction::analyze(){
   list->analyze();
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_ExpressionStatement semantic analysis
+ *  Analyze the ExpressionStatement's expression
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_ExpressionStatement::analyze(){
   express->analyze();
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Declaration semantic analysis
+ *  Analyze the Declaration's AST_Variable
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Declaration::analyze(){
   list->analyze(type);
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Assignment semantic analysis
+ *  Analyze the lhs variable (Deref node will be on top so need to strip)
+ *  Analyze the rhs variable, if no errors are found return or try to
+ *    convert types
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Assignment::analyze(){
   // analyze the lhs variable - a Deref node will be put on top
   AST_Deref* deref = (AST_Deref*) lhs->analyze();
@@ -114,27 +134,34 @@ AST_Node* AST_Assignment::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Print semantic analysis
+ *  Analyze the variable to printed, a Deref node will be added
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Print::analyze(){
-  // analyze the variable - a Deref node will be added
   var = (AST_Expression*)var->analyze();
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Divide semantic analysis
+ *  Analyze left and right subtrees and check results for errors
+ *
+ *  Note: If types aren't the same then a compile-time error occurs,
+ *    because only IntTypes can be divided
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Divide::analyze(){
-  // analyze both subtrees
   left = (AST_Expression*) left->analyze();
   right = (AST_Expression*) right->analyze();
-  // check for error in either subtree to avoid cascade of errors
+
   if((left->type == types->errorType()) || (right->type == types->errorType()))
   {
     type = types->errorType();
     return (AST_Node*) this;
   }
-  // if types not the same then a compile-time error occurs, only ints can be
-  // divided
+
   if(left->type != types->intType() || right->type != types->intType()){
     cerr << line << ": BUG in AST_Divide::analyze: types are different\n";
-    //exit(-1);
     type = types->errorType();
     return (AST_Node*) this;
   }
@@ -143,20 +170,24 @@ AST_Node* AST_Divide::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Multiply semantic analysis
+ *  Analyze left and right subtrees and check results for errors
+ *
+ *  Note: If types aren't the same then a compile-time error occurs,
+ *    because only IntTypes can be multiplied
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Multiply::analyze(){
-  // analyze both subtrees
   left = (AST_Expression*) left->analyze();
   right = (AST_Expression*) right->analyze();
-  // check for error in either subtree to avoid cascade of errors
+
   if ((left->type == types->errorType()) || (right->type == types->errorType())){
     type = types->errorType();
     return (AST_Node*) this;
   }
-  // if types not the same then a compile-time error occurs, only ints can be
-  // multiplied
+
   if(left->type != types->intType() || right->type != types->intType()){
     cerr << line << ": BUG in AST_Multiply::analyze: types are different\n";
-    //exit(-1);
     type = types->errorType();
     return (AST_Node*) this;
   }
@@ -165,20 +196,24 @@ AST_Node* AST_Multiply::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Add semantic analysis
+ *  Analyze left and right subtrees and check results for errors
+ *
+ *  Note: If types aren't the same then a compile-time error occurs,
+ *    because only IntTypes can be added
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Add::analyze(){
-  // analyze both subtrees
   left = (AST_Expression*) left->analyze();
   right = (AST_Expression*) right->analyze();
-  // check for error in either subtree to avoid cascade of errors
+
   if ((left->type == types->errorType()) || (right->type == types->errorType())){
     type = types->errorType();
     return (AST_Node*) this;
   }
-  // if types not the same then a compile-time error occurs, only ints can be
-  // added
+
   if(left->type != types->intType() || right->type != types->intType()){
     cerr << line << ": BUG in AST_Add::analyze: types are different\n";
-    //exit(-1);
     type = types->errorType();
     return (AST_Node*) this;
   }
@@ -187,21 +222,24 @@ AST_Node* AST_Add::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Subtract semantic analysis
+ *  Analyze left and right subtrees and check results for errors
+ *
+ *  Note: If types aren't the same then a compile-time error occurs,
+ *    because only IntTypes can be subtracted
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Subtract::analyze(){
-  // analyze both subtrees
   left = (AST_Expression*) left->analyze();
   right = (AST_Expression*) right->analyze();
 
-  // check for error in either subtree to avoid cascade of errors
   if ((left->type == types->errorType()) || (right->type == types->errorType())){
     type = types->errorType();
     return (AST_Node*) this;
   }
-  // if types not the same then a compile-time error occurs, only ints can be
-  // subtracted
+
   if(left->type != types->intType() || right->type != types->intType()){
     cerr << line << ": BUG in AST_Subtract::analyze: types are different\n";
-      //exit(-1);
     type = types->errorType();
     return (AST_Node*) this;
   }
@@ -210,18 +248,22 @@ AST_Node* AST_Subtract::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_LessThan semantic analysis
+ *  Analyze left and right subtrees and check results for errors
+ *
+ *  Note: If types aren't the same then a compile-time error occurs,
+ *    because only IntTypes can be compared with a less than operator
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_LessThan::analyze(){
-  // analyze both subtrees
   left = (AST_Expression*) left->analyze();
   right = (AST_Expression*) right->analyze();
 
-  // check for error in either subtree to avoid cascade of errors
   if ((left->type == types->errorType()) || (right->type == types->errorType())){
     type = types->errorType();
     return (AST_Node*) this;
   }
-  // if types not the same then a compile-time error occurs, only ints can be
-  // compared with the Less Than operator
+
   if(left->type != types->intType() || right->type != types->intType()){
     cerr << line << ": BUG in AST_LessThan::analyze: types are different\n";
     terminalErrors = true;
@@ -234,21 +276,24 @@ AST_Node* AST_LessThan::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_GreaterThan semantic analysis
+ *  Analyze left and right subtrees and check results for errors
+ *
+ *  Note: If types aren't the same then a compile-time error occurs,
+ *    because only IntTypes can be compared with a greater than operator
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_GreaterThan::analyze(){
-  // analyze both subtrees
   left = (AST_Expression*) left->analyze();
   right = (AST_Expression*) right->analyze();
 
-  // check for error in either subtree to avoid cascade of errors
   if ((left->type == types->errorType()) || (right->type == types->errorType())){
     type = types->errorType();
     return (AST_Node*) this;
   }
-  // if types not the same then a compile-time error occurs, only ints can be
-  // compared with the Greater Than operator
+
   if(left->type != types->intType() || right->type != types->intType()){
     cerr << line << ": BUG in AST_LessThan::analyze: types are different\n";
-    //exit(-1);
     type = types->errorType();
     return (AST_Node*) this;
   }
@@ -257,30 +302,40 @@ AST_Node* AST_GreaterThan::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Negate semantic analysis
+ *  Analyze left subtree and check result for errors
+ *
+ *  Note: If type is not IntType then a compile-time error occurs,
+ *    because only IntTypes can be negated
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Negate::analyze(){
-  // analyze subtree
   left = (AST_Expression*) left->analyze();
-  // check for proper type
   if( left->type == types->intType() ){
     type = left->type;
     return (AST_Node*) this;
   }
   cerr << line << ": BUG in AST_Negate::analyze: type is not int\n";
-  //exit(-1);
+  terminalErrors = true;
   type = types->errorType();
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Not semantic analysis
+ *  Analyze left subtree and check result for errors
+ *
+ *  Note: If type is not IntType then a compile-time error occurs,
+ *    because only IntTypes can be used with the not operator
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Not::analyze(){
-  // analyze subtree
   left = (AST_Expression*) left->analyze();
-  // check for proper type
   if( left->type == types->intType() ){
     type = left->type;
     return (AST_Node*) this;
   }
   cerr << line << ": BUG in AST_Not::analyze: type is not int\n";
-  //exit(-1);
+  terminalErrors = true;
   type = types->errorType();
   return (AST_Node*) this;
 }
@@ -350,6 +405,10 @@ AST_Node* AST_Equality::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Block semantic analysis
+ *  If Block not empty (ie, list not null) then analyze the list
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Block::analyze(){
   if( list != NULL ){
     return list->analyze();
@@ -357,6 +416,12 @@ AST_Node* AST_Block::analyze(){
   return NULL;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_IfThenElse semantic analysis
+ *  Analyze the condition statement, if the if statement is not null then
+ *    analyze the body of the if statement and if the else statement is
+ *    not null then analyze the body of the else statement
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_IfThenElse::analyze(){
   condition->analyze();
   if( ifstat != NULL )
@@ -366,6 +431,11 @@ AST_Node* AST_IfThenElse::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_While semantic analysis
+ *  Increment the while loop counter and analyze the while loop condition
+ *  If the while loop body is not null analyze it
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_While::analyze(){
   whileLoopCount += 1;
   condition->analyze();
@@ -374,6 +444,11 @@ AST_Node* AST_While::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Return semantic analysis
+ *  Analyze the variable to be returned, if the variable is Null issue an
+ *    error
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Return::analyze(){
   if( var != NULL ){
     var->analyze();
@@ -384,6 +459,11 @@ AST_Node* AST_Return::analyze(){
   return NULL;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Break semantic analysis
+ *  Check that there is a while loop to break out of, if not issue an
+ *    error
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Break::analyze(){
   if( whileLoopCount > 0 ){
     return (AST_Node*) this;
@@ -393,6 +473,11 @@ AST_Node* AST_Break::analyze(){
   return NULL;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Continue semantic analysis
+ *  Check that there is a while loop to run continue on, if not issue an
+ *    error
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Continue::analyze(){
   if( whileLoopCount > 0 ){
     return (AST_Node*) this;
@@ -402,6 +487,10 @@ AST_Node* AST_Continue::analyze(){
   return NULL;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_CompilationUnit semantic analysis
+ *  If there is a list of Classes, analyze it then analyze the main
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_CompilationUnit::analyze(){
   if( list != NULL ){
     list->analyze();
@@ -410,11 +499,23 @@ AST_Node* AST_CompilationUnit::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Cast semantic analysis
+ *
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Cast::analyze(){
-  //cerr << "AST_Cast::analyze() not yet implemented\n";
+  cerr << "AST_Cast::analyze() not yet implemented\n";
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Class semantic analysis
+ *  First: Check if declared parent is Null, if it is set parent to
+ *    Object class, otherwise sent to declared parent
+ *  Second: Go through statement list and add all fields to TypeClass's
+ *    symbol table
+ *  Third: Finally, analyze all of the fields
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Class::analyze(){
   if( parent == NULL ){
     TypeClass* t = (TypeClass*)(types->classType(name));
@@ -449,8 +550,14 @@ AST_Node* AST_Class::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_FieldReference semantic analysis
+ *  If the left hand side (owner) can be found in the symbol table check
+ *    the returned TypeClass's symbol table for the right hand side. If
+ *    neither can be found and error is issued
+ *  Note: A Deref node is always put on top of a field reference
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_FieldReference::analyze(){
-  //owner = a, variable = i
   symbolTable->lookup(owner, type);
   if( types->classType(((TypeClass*)(type))->toString()) == NULL ){
     cerr << "Bad cast: " << ((TypeClass*)(type))->toString() << endl;
@@ -464,17 +571,26 @@ AST_Node* AST_FieldReference::analyze(){
       type = types->errorType();
     }
   }
-  // always put Deref node on top of a variable
+
   AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
   ret->type = type;
   return (AST_Node*) ret;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_FieldDeclaration semantic analysis
+ *  Call analyze on the field declaration list
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_FieldDeclaration::analyze(){
   list->analyze(type);
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_ClassInstance semantic analysis
+ *  If a TypeClass with the name of type can not be found issue an error,
+ *    otherwise set type to returned TypeClass
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_ClassInstance::analyze(){
   if( types->classType(type->toString()) == NULL ){
     cerr << line << ": BUG in AST_ClassInstance::analyze: class " <<
@@ -488,27 +604,45 @@ AST_Node* AST_ClassInstance::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_ArgumentsList semantic analysis
+ *
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_ArgumentsList::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Null semantic analysis
+ *  Set type to nullType
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Null::analyze(){
-  //cerr << "AST_Null::analyze() not yet implemented\n";
+  type = types->nullType();
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_EmptyStatement semantic analysis
+ *  The name says it all
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_EmptyStatement::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Convert semantic analysis
+ *  These nodes are added in analyze but should never actually be analyzed
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Convert::analyze(){
-  // convert node is added in analyze but should never be analyzed itself
   cerr << line << ": BUG in AST_Convert::analyze: should never be called\n";
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Deref semantic analysis
+ *  These nodes are added in analyze but should never actually be analyzed
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Deref::analyze(){
-  // deref node is added in analyze but should never be analyzed itself
   cerr << line << ": BUG in AST_Deref::analyze: should never be called\n";
   return (AST_Node*) this;
 }

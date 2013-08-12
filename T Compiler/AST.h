@@ -43,8 +43,6 @@ class AST_List: public AST_Node{
   protected:
     AST_Node* item;
     AST_List* restOfList;
-    char* owner;
-    bool ownerSet;
   public:
     virtual ~AST_List();
 
@@ -55,7 +53,6 @@ class AST_List: public AST_Node{
     virtual void concat(AST_List* l);
     virtual AST_Node* getItem();
     virtual AST_List* getRestOfList();
-    virtual void setOwner(char* n);
 
   protected:
     AST_List(AST_Node* newItem, AST_List* list);
@@ -105,9 +102,6 @@ class AST_Literal: public AST_Expression{
  *  This class represents a list of AST_Statements
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class AST_StatementList: public AST_List{
-  protected:
-    char* owner;
-    bool ownerSet;
   public:
     ~AST_StatementList();
     AST_StatementList(AST_Statement* statement, AST_List* restOfList);
@@ -127,9 +121,6 @@ class AST_ExpressionStatement: public AST_Statement{
 };
 
 class AST_VariableList: public AST_List{
-  protected:
-    char* owner;
-    bool ownerSet;
   public:
     ~AST_VariableList();
     AST_VariableList(AST_Expression* expr, AST_VariableList* vl);
@@ -137,7 +128,6 @@ class AST_VariableList: public AST_List{
     void dump();
     void encode();
     AST_Node* analyze(Type* t);
-    void setOwner(char* n);
 };
 
 // abstract class: all binary operation expression nodes derived from this
@@ -178,17 +168,12 @@ class AST_MainFunction: public AST_Node{
 class AST_Variable: public AST_Expression{
   public:
     char* name;
-    char* owner;
-    char* maskedName;
-    bool maskSet;
     ~AST_Variable();
     AST_Variable(char *id);
 
     void dump();
     AST_Node* analyze();
     void encode();
-    void setOwner(char* n);
-    void setMaskedName();
 };
 
 // integer literal
