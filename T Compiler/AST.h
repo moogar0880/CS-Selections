@@ -128,6 +128,7 @@ class AST_VariableList: public AST_List{
     void dump();
     void encode();
     AST_Node* analyze(Type* t);
+    AST_Node* analyze(Type* t, SymbolTable* s);
 };
 
 // abstract class: all binary operation expression nodes derived from this
@@ -173,6 +174,7 @@ class AST_Variable: public AST_Expression{
 
     void dump();
     AST_Node* analyze();
+    AST_Node* analyze(SymbolTable* s);
     void encode();
 };
 

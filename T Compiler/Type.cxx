@@ -29,6 +29,17 @@ char* TypeNone::toString(){
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Deref Type class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+TypeDeref::TypeDeref(){}
+
+TypeDeref::~TypeDeref(){}
+
+char* TypeDeref::toString(){
+  return (char *) "deref";
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Error Type class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 TypeError::TypeError(){}
@@ -162,6 +173,7 @@ TypeModule::TypeModule(){
   errorTypeInternal = (Type*) new TypeError();
   noTypeInternal = (Type*) new TypeNone();
   nullTypeInternal = (Type*) new TypeNull();
+  derefTypeInternal = (Type*) new TypeDeref();
 }
 
 //Search TypeModule and determine if a class with name n exists
@@ -207,6 +219,10 @@ Type* TypeModule::noType(){
 
 Type* TypeModule::nullType(){
   return nullTypeInternal;
+}
+
+Type* TypeModule::derefType(){
+  return derefTypeInternal;
 }
 
 TypeClass* TypeModule::classType(char* name){

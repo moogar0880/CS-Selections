@@ -57,7 +57,8 @@ void AST_VariableList::encode(){
 
 void AST_MainFunction::encode(){
   cout << "#\tMainFunction\n";
-  list->encode();
+  if( list != NULL )
+    list->encode();
 }
 
 void AST_Declaration::encode(){
@@ -279,7 +280,7 @@ void AST_IfThenElse::encode(){
   cout << "\tje\tL" << l1 << "\n";
   if( ifstat != NULL )
     ifstat->encode();
-  cout << "\tje\tL" << l2 << "\n";
+  cout << "\tjmp\tL" << l2 << "\n";
   cout << "L" << l1 << ":\n";
   if( elstat != NULL )
     elstat->encode();
@@ -411,10 +412,10 @@ void AST_ClassInstance::encode(){
   cout << "\tcall\tcalloc\n";
   cout << "\taddl\t$8, %esp\n";
   cout << "\tcmpl\t$0, %eax\n";
-  cout << "\tjne\t" << "\tL" << ++labelCount << "\n";
+  cout << "\tjne\t" << "\tCI" << ++labelCount << "\n";
   cout << "\tpushl\t$" << line << "\n";
   cout << "\tcall\tRTS_outOfMemoryError\n";
-  cout << "L" << labelCount << ":\n";
+  cout << "CI" << labelCount << ":\n";
   cout << "\tmovl\t$" << className << "$VMT, (%eax)\n";
   cout << "\tpushl\t%eax\n";
 }

@@ -152,6 +152,7 @@ AST_BinaryOperator::~AST_BinaryOperator(){
 AST_BinaryOperator::AST_BinaryOperator(AST_Expression* l, AST_Expression* r){
   left = l;
   right = r;
+
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -647,6 +648,7 @@ void AST_FieldDeclaration::setOwner(char* n){
     scan = (AST_Variable*)(list->getItem());
     rol = (AST_VariableList*)(list->getRestOfList());
   }
+  /*
   Type* t = NULL;
   while(scan != NULL){
     if( types->classType(n)->getItem(scan->name, t) ){
@@ -663,7 +665,7 @@ void AST_FieldDeclaration::setOwner(char* n){
     }
     else
       scan = NULL;
-  }
+  }*/
   ownerSet = true;
 }
 

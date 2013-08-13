@@ -56,7 +56,26 @@ AST_Node* AST_Variable::analyze(){
   }
   //Set Deref node
   AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
-  ret->type = type;
+  ret->type = types->derefType();
+  return (AST_Node*) ret;
+}
+
+//Class field analyzer
+AST_Node* AST_Variable::analyze(SymbolTable* s){
+  Type* typeFromSymbolTable;
+  if(s->lookup(name, typeFromSymbolTable)){
+    type = typeFromSymbolTable;
+    if( type != types->intType() ){
+      type = types->classType(type->toString());
+    }
+  }
+  else{
+    cerr << line << ": variable " << name << " is not declared!\n";
+    type = types->errorType();
+  }
+  //Set Deref node
+  AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
+  ret->type = types->derefType();
   return (AST_Node*) ret;
 }
 
@@ -76,7 +95,17 @@ AST_Node* AST_VariableList::analyze(Type* t){
     restOfList = (AST_List*)((AST_VariableList*) restOfList)->analyze(t);
   return (AST_Node*) this;
 }
-
+//Special VariableList analysis for Class fields
+AST_Node* AST_VariableList::analyze(Type* t, SymbolTable* s){
+  if(!s->install(((AST_Variable*)(item))->name, t)){
+    cerr << line << ": custom symbol table duplicate declaration for " << t->toString() << " " <<
+      ((AST_Variable*)(item))->name << endl;
+  }
+  ((AST_Variable*)(item))->analyze(s);
+  if(restOfList != NULL)
+    restOfList = (AST_List*)((AST_VariableList*) restOfList)->analyze(t,s);
+  return (AST_Node*) this;
+}
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_MainFunction semantic analysis
  *  Analyze the MainFunction's StatementList
@@ -119,13 +148,38 @@ AST_Node* AST_Assignment::analyze(){
   delete deref;
   // analyze the expression
   rhs = (AST_Expression*) rhs->analyze();
+  // if right is a variable a Deref will be on top so need to remove
+  if( rhs->type == types->derefType() ){
+    AST_Deref* derefR = (AST_Deref*)rhs;
+    // strip off the Deref node
+    rhs = derefR->left;
+    derefR->left = NULL;
+    delete derefR;
+  }
   // check if error was detected in one of the subtrees
   // ie avoid a cascade of error messages
   if((lhs->type == types->errorType()) || (rhs->type == types->errorType())){
+    type = types->errorType();
     return (AST_Node*) this;
   }
   // add a convert node if the types are not the same
   if(lhs->type != rhs->type){
+    if( lhs->type == types->intType() || rhs->type == types->intType() ){
+      cerr << line << ": BUG in AST_Assignment::analyze: can't assign " <<
+        rhs->type->toString() << " to " << lhs->type->toString() << "\n";
+      type = types->errorType();
+      terminalErrors = true;
+    }
+    else if(lhs->type != types->nullType() && rhs->type == types->nullType()){
+      type = types->nullType();
+    }
+    else if( lhs->type == types->nullType() ){
+      cerr << line <<
+        ": BUG in AST_Assignment::analyze: can't assign to Null instance\n";
+      type = types->errorType();
+      terminalErrors = true;
+    }
+    //Need to check for possible widening
     AST_Expression* newNode = new AST_Convert(rhs);
 
     newNode->type = lhs->type;
@@ -340,6 +394,19 @@ AST_Node* AST_Not::analyze(){
   return (AST_Node*) this;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Equality semantic analysis
+ *  Analyze left and right subtrees and check for errors
+ *
+ *  Pick up any errros and pass them up accordingly
+ *
+ *  Check if both sides are NULL
+ *
+ *  If left and right types are different check to see if they can be
+ *    converted
+ *
+ *  If types are the same return the left side's type
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Equality::analyze(){
   // analyze both subtrees
   left = (AST_Expression*) left->analyze();
@@ -351,6 +418,12 @@ AST_Node* AST_Equality::analyze(){
     return (AST_Node*) this;
   }
 
+  // check to see if both sides are null
+  if( left->type == types->nullType() && right->type == types->nullType() ){
+    type = types->nullType();
+    return (AST_Node*) this;
+  }
+
   // if types not the same then a compile time error occurs if an int is
   // compared with a reference or null type or if it is impossible to convert
   // the type of either operand to the type of the other by a casting
@@ -358,49 +431,48 @@ AST_Node* AST_Equality::analyze(){
   if (left->type != right->type){
     if( left->type == types->intType() || right->type == types->intType() ){
       cerr << line << ": BUG in AST_Equality::analyze: types are different\n";
-      //exit(-1);
+      terminalErrors = true;
       type = types->errorType();
       return (AST_Node*) this;
-    }
-    Type* lTypeFromSymbolTable;
-    Type* rTypeFromSymbolTable;
-    char* lName;
-    char* rName;
-    lName = ((AST_Variable*)(left))->name;
-    rName = ((AST_Variable*)(right))->name;
-    symbolTable->lookup(lName, lTypeFromSymbolTable);
-    symbolTable->lookup(rName, rTypeFromSymbolTable);
-    TypeClass* l;
-    TypeClass* r;
-    std::vector<TypeClass*>::iterator it;
-    for(it = types->getClassList().begin(); it != types->getClassList().end(); ++it ){
-      if( strcmp((*it)->getName(),lTypeFromSymbolTable->toString()) == 0 )
-        l = (*it);
-      if( strcmp((*it)->getName(),rTypeFromSymbolTable->toString()) == 0 )
-        r = (*it);
-    }
+    } // end int check
+
+    // class reference checks
+    TypeClass* l = (TypeClass*)left->type;
+    TypeClass* r = (TypeClass*)right->type;
 
     // l is child of r
-    if(((AST_Node*)this)->areComparable((AST_Node*)l,(AST_Node*)r)){
-      AST_Expression* newNode = new AST_Convert(left);
-      newNode->type = types->classType(rTypeFromSymbolTable->toString());
-      left = newNode;
-      type = left->type;
-      return (AST_Node*) this;
-    } // r is child of l
-    else if(((AST_Node*)this)->areComparable((AST_Node*)r,(AST_Node*)l)){
-      AST_Expression* newNode = new AST_Convert(right);
-      newNode->type = types->classType(lTypeFromSymbolTable->toString());
-      right = newNode;
-      type = right->type;
-      return (AST_Node*) this;
-    } // l and r are not related
-    else{
-      cerr << line << ": BUG in AST_Equality::analyze: types are unrelated\n";
-      type = types->errorType();
-      return (AST_Node*) this;
+    TypeClass* scan = l;
+    while( scan != NULL ){
+      if( !strcmp(scan->getName(),r->getName()) ){
+        AST_Expression* newNode = new AST_Convert(left);
+        newNode->type = types->classType(r->toString());
+        left = newNode;
+        type = left->type;
+        return (AST_Node*) this;
+      }
+      scan = scan->getParent();
     }
+
+    // r is child of l
+    scan = r;
+    while( scan != NULL ){
+      if( !strcmp(scan->getName(),l->getName()) ){
+        AST_Expression* newNode = new AST_Convert(right);
+        newNode->type = types->classType(l->toString());
+        right = newNode;
+        type = right->type;
+        return (AST_Node*) this;
+      }
+      scan = scan->getParent();
+    }
+
+    // l and r are not related
+    cerr << line << ": BUG in AST_Equality::analyze: types are unrelated\n";
+    type = types->errorType();
+    return (AST_Node*) this;
   }
+
+  // left and right are same type
   type = left->type;
   return (AST_Node*) this;
 }
@@ -573,7 +645,7 @@ AST_Node* AST_FieldReference::analyze(){
   }
 
   AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
-  ret->type = type;
+  ret->type = types->derefType();
   return (AST_Node*) ret;
 }
 
@@ -582,7 +654,7 @@ AST_Node* AST_FieldReference::analyze(){
  *  Call analyze on the field declaration list
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_FieldDeclaration::analyze(){
-  list->analyze(type);
+  list->analyze(type, types->classType(owner)->getSymbolTable());
   return (AST_Node*) this;
 }
 

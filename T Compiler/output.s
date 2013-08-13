@@ -49,6 +49,21 @@ L1:
 	addl	$4, %esp
 #	Field Reference
 	pushl	$mainvar$a1
+	pushl	$13
+	call	RTS_checkForNullReference
+	popl	%eax
+	popl	%eax
+	addl	$4, %eax
+	pushl	%eax
+#	Deref
+	popl	%eax
+	movl	(%eax), %eax
+	pushl	%eax
+#	Print int
+	call	RTS_outputInteger
+	addl	$4, %esp
+#	Field Reference
+	pushl	$mainvar$a1
 	pushl	$14
 	call	RTS_checkForNullReference
 	popl	%eax
@@ -64,6 +79,26 @@ L1:
 	pushl	%eax
 #	ExpressionStatement
 	addl	$4, %esp
+#	IntegerLiteral
+	pushl	$99
+#	Print int
+	call	RTS_outputInteger
+	addl	$4, %esp
+#	Field Reference
+	pushl	$mainvar$a1
+	pushl	$16
+	call	RTS_checkForNullReference
+	popl	%eax
+	popl	%eax
+	addl	$4, %eax
+	pushl	%eax
+#	Deref
+	popl	%eax
+	movl	(%eax), %eax
+	pushl	%eax
+#	Print int
+	call	RTS_outputInteger
+	addl	$4, %esp
 #	Variable
 	pushl	$mainvar$a2
 #	Variable
@@ -78,6 +113,26 @@ L1:
 	movl	%eax, (%edx)
 	pushl	%eax
 #	ExpressionStatement
+	addl	$4, %esp
+#	IntegerLiteral
+	pushl	$76
+#	Print int
+	call	RTS_outputInteger
+	addl	$4, %esp
+#	Field Reference
+	pushl	$mainvar$a2
+	pushl	$19
+	call	RTS_checkForNullReference
+	popl	%eax
+	popl	%eax
+	addl	$4, %eax
+	pushl	%eax
+#	Deref
+	popl	%eax
+	movl	(%eax), %eax
+	pushl	%eax
+#	Print int
+	call	RTS_outputInteger
 	addl	$4, %esp
 #	If then else
 #	Variable
@@ -103,6 +158,11 @@ L1:
 	cmpl	$0, %eax
 	je	L1
 #	Block
+#	IntegerLiteral
+	pushl	$17
+#	Print int
+	call	RTS_outputInteger
+	addl	$4, %esp
 #	Variable
 	pushl	$mainvar$i
 #	IntegerLiteral
@@ -129,6 +189,20 @@ L1:
 #	ExpressionStatement
 	addl	$4, %esp
 L2:
+#	IntegerLiteral
+	pushl	$103
+#	Print int
+	call	RTS_outputInteger
+	addl	$4, %esp
+#	Variable
+	pushl	$mainvar$i
+#	Deref
+	popl	%eax
+	movl	(%eax), %eax
+	pushl	%eax
+#	Print int
+	call	RTS_outputInteger
+	addl	$4, %esp
 #	Variable
 	pushl	$mainvar$i
 #	Variable
@@ -139,7 +213,7 @@ L2:
 	pushl	%eax
 #	Field Reference
 	pushl	$mainvar$a2
-	pushl	$27
+	pushl	$32
 	call	RTS_checkForNullReference
 	popl	%eax
 	popl	%eax
@@ -160,6 +234,11 @@ L2:
 	movl	%eax, (%edx)
 	pushl	%eax
 #	ExpressionStatement
+	addl	$4, %esp
+#	IntegerLiteral
+	pushl	$274
+#	Print int
+	call	RTS_outputInteger
 	addl	$4, %esp
 #	Variable
 	pushl	$mainvar$i

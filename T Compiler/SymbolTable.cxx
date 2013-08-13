@@ -69,11 +69,9 @@ bool SymbolTable::install(char* name, Type* type){
   }
   if (last == NULL){
     head = new SymbolTableRecord(name, type);
-     // dump();
   }
   else{
     last->next = new SymbolTableRecord(name, type);
-     // dump();
   }
   return true;
 }

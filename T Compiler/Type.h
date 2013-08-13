@@ -40,6 +40,17 @@ class TypeNone: public Type{
 };
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Class representation for deref types
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+class TypeDeref: public Type{
+  public:
+    TypeDeref();
+    ~TypeDeref();
+
+    char* toString();
+};
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Class representation for a type which will or has resulted in an error
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class TypeError: public Type{
@@ -128,6 +139,7 @@ class TypeModule{
      Type* errorTypeInternal;
      Type* noTypeInternal;
      Type* nullTypeInternal;
+     Type* derefTypeInternal;
      std::vector<TypeClass*> classTypes; //dynamic Class Type storage
 
   public:
@@ -137,6 +149,7 @@ class TypeModule{
     Type* errorType();
     Type* noType();
     Type* nullType();
+    Type* derefType();
     TypeClass* classType(char* name);
     Type* createNewClassType(char* n); //returns false if class already defined
     bool containsClassType(char* n);   //returns false on error
