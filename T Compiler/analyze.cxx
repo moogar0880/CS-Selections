@@ -149,13 +149,13 @@ AST_Node* AST_Assignment::analyze(){
   // analyze the expression
   rhs = (AST_Expression*) rhs->analyze();
   // if right is a variable a Deref will be on top so need to remove
-  if( rhs->type == types->derefType() ){
+  /*if( rhs->type == types->derefType() ){
     AST_Deref* derefR = (AST_Deref*)rhs;
     // strip off the Deref node
     rhs = derefR->left;
     derefR->left = NULL;
     delete derefR;
-  }
+  }*/
   // check if error was detected in one of the subtrees
   if((lhs->type == types->errorType()) || (rhs->type == types->errorType())){
     type = types->errorType();
@@ -439,7 +439,7 @@ AST_Node* AST_Equality::analyze(){
 
   // check to see if both sides are null
   if( left->type == types->nullType() && right->type == types->nullType() ){
-    type = types->nullType();
+    type = types->intType();
     return (AST_Node*) this;
   }
 
@@ -466,7 +466,7 @@ AST_Node* AST_Equality::analyze(){
         AST_Expression* newNode = new AST_Convert(left);
         newNode->type = types->classType(r->toString());
         left = newNode;
-        type = left->type;
+        type = types->intType();
         return (AST_Node*) this;
       }
       scan = scan->getParent();
@@ -479,7 +479,7 @@ AST_Node* AST_Equality::analyze(){
         AST_Expression* newNode = new AST_Convert(right);
         newNode->type = types->classType(l->toString());
         right = newNode;
-        type = right->type;
+        type = types->intType();
         return (AST_Node*) this;
       }
       scan = scan->getParent();
@@ -492,7 +492,7 @@ AST_Node* AST_Equality::analyze(){
   }
 
   // left and right are same type
-  type = left->type;
+  type = types->intType();
   return (AST_Node*) this;
 }
 

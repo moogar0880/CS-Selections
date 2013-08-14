@@ -436,7 +436,7 @@ void AST_EmptyStatement::encode(){
 
 void AST_Convert::encode(){
   left->encode();
-  cerr << line << ": Declared type of Convert = " << type->toString() << endl;
+  //cerr << line << ": Declared type of Convert = " << type->toString() << endl;
   if (type == types->intType()){
     cout << "#\tConvert to int\n";
     // load value into fp register
@@ -467,8 +467,8 @@ void AST_Convert::encode(){
     cout << "\taddl\t$2, %esp\n";
   }
   else{
-    cerr << line << ": BUG in AST_Convert::encode: unexpected type\n";
-    exit(-1);
+    //cerr << line << ": BUG in AST_Convert::encode: unexpected type\n";
+    //exit(-1);
   }
 }
 
