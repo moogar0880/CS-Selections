@@ -7,8 +7,13 @@ main:
 	movl	%esp, %ebp
 #	Object Class VMT
 	.data
-A$VMT:
+Object$VMT:
 	.long	0
+	.text
+#	A Class VMT
+	.data
+A$VMT:
+	.long	Object$VMT
 	.text
 #	MainFunction
 #	Declaration
@@ -26,6 +31,7 @@ mainvar$a2: .long 0
 #	VariableList
 mainvar$i: .long 0
 	.text
+#	Assignment
 #	Variable
 	pushl	$mainvar$a1
 #	A Class Instance
@@ -34,34 +40,19 @@ mainvar$i: .long 0
 	call	calloc
 	addl	$8, %esp
 	cmpl	$0, %eax
-	jne		L1
+	jne		CI1
 	pushl	$12
 	call	RTS_outOfMemoryError
-L1:
+CI1:
 	movl	$A$VMT, (%eax)
 	pushl	%eax
-#	Assignment
 	popl	%eax
 	popl	%edx
 	movl	%eax, (%edx)
 	pushl	%eax
 #	ExpressionStatement
 	addl	$4, %esp
-#	Field Reference
-	pushl	$mainvar$a1
-	pushl	$13
-	call	RTS_checkForNullReference
-	popl	%eax
-	popl	%eax
-	addl	$4, %eax
-	pushl	%eax
-#	Deref
-	popl	%eax
-	movl	(%eax), %eax
-	pushl	%eax
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
+#	Assignment
 #	Field Reference
 	pushl	$mainvar$a1
 	pushl	$14
@@ -72,67 +63,22 @@ L1:
 	pushl	%eax
 #	IntegerLiteral
 	pushl	$21
-#	Assignment
 	popl	%eax
 	popl	%edx
 	movl	%eax, (%edx)
 	pushl	%eax
 #	ExpressionStatement
 	addl	$4, %esp
-#	IntegerLiteral
-	pushl	$99
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
-#	Field Reference
-	pushl	$mainvar$a1
-	pushl	$16
-	call	RTS_checkForNullReference
-	popl	%eax
-	popl	%eax
-	addl	$4, %eax
-	pushl	%eax
-#	Deref
-	popl	%eax
-	movl	(%eax), %eax
-	pushl	%eax
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
+#	Assignment
 #	Variable
 	pushl	$mainvar$a2
 #	Variable
 	pushl	$mainvar$a1
-#	Deref
-	popl	%eax
-	movl	(%eax), %eax
-	pushl	%eax
-#	Assignment
 	popl	%eax
 	popl	%edx
 	movl	%eax, (%edx)
 	pushl	%eax
 #	ExpressionStatement
-	addl	$4, %esp
-#	IntegerLiteral
-	pushl	$76
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
-#	Field Reference
-	pushl	$mainvar$a2
-	pushl	$19
-	call	RTS_checkForNullReference
-	popl	%eax
-	popl	%eax
-	addl	$4, %eax
-	pushl	%eax
-#	Deref
-	popl	%eax
-	movl	(%eax), %eax
-	pushl	%eax
-#	Print int
-	call	RTS_outputInteger
 	addl	$4, %esp
 #	If then else
 #	Variable
@@ -158,30 +104,25 @@ L1:
 	cmpl	$0, %eax
 	je	L1
 #	Block
-#	IntegerLiteral
-	pushl	$17
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
+#	Assignment
 #	Variable
 	pushl	$mainvar$i
 #	IntegerLiteral
 	pushl	$21
-#	Assignment
 	popl	%eax
 	popl	%edx
 	movl	%eax, (%edx)
 	pushl	%eax
 #	ExpressionStatement
 	addl	$4, %esp
-	je	L2
+	jmp	L2
 L1:
 #	Block
+#	Assignment
 #	Variable
 	pushl	$mainvar$i
 #	IntegerLiteral
 	pushl	$1
-#	Assignment
 	popl	%eax
 	popl	%edx
 	movl	%eax, (%edx)
@@ -189,56 +130,29 @@ L1:
 #	ExpressionStatement
 	addl	$4, %esp
 L2:
-#	IntegerLiteral
-	pushl	$103
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
-#	Variable
-	pushl	$mainvar$i
-#	Deref
-	popl	%eax
-	movl	(%eax), %eax
-	pushl	%eax
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
+#	Assignment
 #	Variable
 	pushl	$mainvar$i
 #	Variable
 	pushl	$mainvar$i
-#	Deref
-	popl	%eax
-	movl	(%eax), %eax
-	pushl	%eax
 #	Field Reference
 	pushl	$mainvar$a2
-	pushl	$32
+	pushl	$27
 	call	RTS_checkForNullReference
 	popl	%eax
 	popl	%eax
 	addl	$4, %eax
-	pushl	%eax
-#	Deref
-	popl	%eax
-	movl	(%eax), %eax
 	pushl	%eax
 #	Add int
 	popl	%edx
 	popl	%eax
 	addl	%edx, %eax
 	pushl	%eax
-#	Assignment
 	popl	%eax
 	popl	%edx
 	movl	%eax, (%edx)
 	pushl	%eax
 #	ExpressionStatement
-	addl	$4, %esp
-#	IntegerLiteral
-	pushl	$274
-#	Print int
-	call	RTS_outputInteger
 	addl	$4, %esp
 #	Variable
 	pushl	$mainvar$i

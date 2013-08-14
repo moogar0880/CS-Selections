@@ -157,7 +157,6 @@ AST_Node* AST_Assignment::analyze(){
     delete derefR;
   }
   // check if error was detected in one of the subtrees
-  // ie avoid a cascade of error messages
   if((lhs->type == types->errorType()) || (rhs->type == types->errorType())){
     type = types->errorType();
     return (AST_Node*) this;
@@ -184,6 +183,9 @@ AST_Node* AST_Assignment::analyze(){
 
     newNode->type = lhs->type;
     rhs = newNode;
+  }
+  else{
+    type = rhs->type;
   }
   return (AST_Node*) this;
 }
@@ -261,12 +263,29 @@ AST_Node* AST_Add::analyze(){
   left = (AST_Expression*) left->analyze();
   right = (AST_Expression*) right->analyze();
 
+  if(left->type == types->derefType()){
+    AST_Deref* dl = (AST_Deref*)left;
+    // strip off the Deref node
+    left = dl->left;
+    dl->left = NULL;
+    delete dl;
+  }
+
+  if(right->type == types->derefType()){
+    AST_Deref* dr = (AST_Deref*)right;
+    // strip off the Deref node
+    right = dr->left;
+    dr->left = NULL;
+    delete dr;
+  }
+
   if ((left->type == types->errorType()) || (right->type == types->errorType())){
     type = types->errorType();
     return (AST_Node*) this;
   }
 
   if(left->type != types->intType() || right->type != types->intType()){
+    cerr<< "\tLeft: " << left->type->toString() << "\n\tRight:" << right->type->toString() << endl;
     cerr << line << ": BUG in AST_Add::analyze: types are different\n";
     type = types->errorType();
     return (AST_Node*) this;

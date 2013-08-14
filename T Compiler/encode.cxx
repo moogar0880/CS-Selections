@@ -75,9 +75,10 @@ void AST_ExpressionStatement::encode(){
 }
 
 void AST_Assignment::encode(){
+  cout << "#\tAssignment\n";
   lhs->encode();
   rhs->encode();
-  cout << "#\tAssignment\n";
+  cerr << "Assignment " << lhs->type->toString() << " =?= " << rhs->type->toString() << endl;
   cout << "\tpopl\t%eax\n";
   cout << "\tpopl\t%edx\n";
   cout << "\tmovl\t%eax, (%edx)\n";
@@ -86,7 +87,13 @@ void AST_Assignment::encode(){
 
 void AST_Print::encode(){
   var->encode();
-
+  if( var->type == types->derefType() ){
+    AST_Deref* derefR = (AST_Deref*)var;
+    // strip off the Deref node
+    var = derefR->left;
+    derefR->left = NULL;
+    delete derefR;
+  }
   if (var->type == types->intType()){
     cout << "#\tPrint int\n";
     cout << "\tcall\tRTS_outputInteger\n";
@@ -96,7 +103,7 @@ void AST_Print::encode(){
     // do nothing: there was a semantic error
   }
   else{
-    cerr << line << ": BUG in AST_Print::encode: unknown type\n";
+    cerr << line << ": BUG in AST_Print::encode: unknown type " << var->type->toString() << endl;
     exit(-1);
   }
 }
@@ -193,6 +200,7 @@ void AST_Subtract::encode(){
 void AST_Equality::encode(){
   left->encode();
   right->encode();
+  cerr << "Equality " << left->type->toString() << " =?= " << right->type->toString() << endl;
   cout << "#\tEquality\n";
   cout << "\tpopl\t%eax\n";
   cout << "\tpopl\t%edx\n";
@@ -331,14 +339,11 @@ void AST_Null::encode(){
 
 void AST_CompilationUnit::encode(){
   // generate Object Class code immediately for ease
-  std::vector<TypeClass*>::iterator it;
-  //it = globalClassList.begin();
-  //(*it)->encode();
-  /*AST_Class* scan = (AST_Class*)(list->getItem());
-  while(scan != NULL){
-    scan->encode();
-    scan = list->getRestOfList();
-  }*/
+  cout << "#\tObject Class VMT\n";
+  cout << "\t.data\n";
+  cout << "Object$VMT:\n";
+  cout << "\t.long\t0\n";
+  cout << "\t.text\n";
 
   if( list != NULL )
     list->encode();
@@ -355,10 +360,11 @@ void AST_Class::encode(){
     cout << "\t.text\n";
   }
   else{
-    cout << "#\tObject Class VMT\n";
+    //cout << "#\tObject Class VMT\n";
+    cout << "#\t" << name << " Class VMT\n";
     cout << "\t.data\n";
     cout << name << "$VMT:\n";
-    cout << "\t.long\t0\n";
+    cout << "\t.long\tObject$VMT\n";
     cout << "\t.text\n";
   }
 }

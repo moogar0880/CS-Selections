@@ -498,6 +498,7 @@ AST_Class::~AST_Class(){
 
 void AST_Class::dump(){
   cerr << "Class " << name << "\n";
+  fields->dump();
 }
 
 char* AST_Class::getName(){
@@ -580,6 +581,8 @@ AST_CompilationUnit::~AST_CompilationUnit(){}
 
 void AST_CompilationUnit::dump(){
   cerr << "CompilationUnit\n";
+  list->dump();
+  main->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -642,13 +645,13 @@ void AST_FieldDeclaration::dump(){
 
 void AST_FieldDeclaration::setOwner(char* n){
   owner = n;
-  AST_Variable* scan = NULL;
+  /*AST_Variable* scan = NULL;
   AST_VariableList* rol;
   if( list != NULL ){
     scan = (AST_Variable*)(list->getItem());
     rol = (AST_VariableList*)(list->getRestOfList());
   }
-  /*
+  
   Type* t = NULL;
   while(scan != NULL){
     if( types->classType(n)->getItem(scan->name, t) ){
@@ -684,7 +687,7 @@ AST_FieldReference::~AST_FieldReference(){
 }
 
 void AST_FieldReference::dump(){
-  cerr << "Field Reference of type " << type << "\n";
+  cerr << "Field Reference of type " << type->toString() << "\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -747,7 +750,7 @@ AST_Deref::AST_Deref(AST_Expression* l) : AST_UnaryOperator(l){}
 AST_Deref::~AST_Deref(){}
 
 void AST_Deref::dump(){
-  cerr << "Deref " << type->toString() << endl;
+  cerr << "Deref " << left->type->toString() << endl;
   left->dump();
 }
 
