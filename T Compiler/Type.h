@@ -84,13 +84,41 @@ class TypeNull: public Type{
 };
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Class representation for any method type
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ class TypeMethod: public Type{
+  protected:
+    char* name;
+    //dynamic parameter storage, needs to be a list because order matters
+    std::vector<SymbolTableRecord*> parameters;
+    std::vector<Type*> signature;
+
+  public:
+    TypeMethod(char* n, Type* ret, bool cons, bool dest);
+    ~TypeMethod();
+    bool isConstructor;
+    bool isDestructor;
+    Type* returnType;
+
+    bool  hasParam(char* n);
+    bool  addParam(char* n, Type* type);
+    char* toString();
+    char* getName();
+    char* toVMTString(char* owner);
+    std::vector<Type*> getSig();
+    bool  operator==(const TypeMethod* other);
+ };
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Class representation for any class type
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class TypeClass: public Type{
   protected:
     char* name;
-    Type* parent;
+    TypeClass* parent;
     SymbolTable* classTable;
+    TypeMethod* destructor;
+
   public:
     TypeClass(char* n);
     ~TypeClass();
@@ -103,32 +131,11 @@ class TypeClass: public Type{
     char* getName();
     void  encode();
     SymbolTable* getSymbolTable();
+    char* toVMT();
+    TypeMethod* getDestructor();
+    bool hasDeclaredDestructor;
+    bool hasDeclaredConstructor;
 };
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * Class representation for any method type
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
- class TypeMethod: public Type{
-  protected:
-    char* name;
-    Type* owner;
-    SymbolTable* symbolTable; //For storing local variables
-    //dynamic parameter storage, needs to be a list because order matters
-    std::vector<SymbolTableRecord*> parameters;
-
-  public:
-    TypeMethod(char* n, Type* owner, bool cons, bool dest);
-    ~TypeMethod();
-    bool isConstructor;
-    bool isDestructor;
-
-    bool  hasParam(char* n);
-    bool  addParam(char* n, Type* type);
-    bool  getItem(char* n, Type* type);
-    void  add(char* n, Type* type);
-    char* toString();
-    char* getName();
- };
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Container class for all possible type classes

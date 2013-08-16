@@ -128,6 +128,18 @@ new                      {
                            return token(NEW);
                          }
 
+this                     {
+                           return token(THIS);
+                         }
+
+super                    {
+                           return token(SUPER);
+                         }
+
+delete                   {
+                           return token(DELETE);
+                         }
+
 [.]                      {
                            return token('.');
                          }

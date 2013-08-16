@@ -48,6 +48,8 @@ extern bool before, after, classes, terminalErrors;
         AST_Class* clss;
         AST_ClassList* classList;
         AST_ArgumentsList* args;
+        AST_ParameterList* formalParam;
+        AST_Parameter* param;
 };
 
 %token <value> INTEGER_LITERAL
@@ -72,8 +74,20 @@ extern bool before, after, classes, terminalErrors;
 %token MAIN
 %token NULL_LITERAL
 %token CLASS EXTENDS NEW
+%token THIS SUPER DELETE
 
 %type <pList> program
+// phase 4
+%type <statement> ConstructorDeclaration DestructorDeclaration MethodDeclaration
+%type <statement> ConstructorInvocation
+%type <statementList> MethodBody
+%type <statement> MethodDeclarator DestructorDeclarator ConstructorDeclarator
+%type <statement> DeleteStatement
+%type <args> ArgumentList
+%type <statementList> ConstructorBody DestructorBody
+%type <formalParam> FormalParameterList FormalParameters
+%type <param> FormalParameter
+%type <expression> VariableDeclaratorID MethodInvocation
 // phase 3
 %type <comp> CompilationUnit
 %type <clss> ClassDeclaration
@@ -204,6 +218,14 @@ ClassBodyDeclaration
   {
     $$ = $1;
   }
+  | ConstructorDeclaration
+  {
+    $$ = $1;
+  }
+  | DestructorDeclaration
+  {
+    $$ = $1;
+  }
   | ';'
   {
     $$ = NULL;
@@ -212,6 +234,128 @@ ClassBodyDeclaration
 
 ClassMemberDeclaration
   : FieldDeclaration
+  {
+    $$ = $1;
+  }
+  | MethodDeclaration
+  {
+    $$ = $1;
+  }
+  ;
+
+MethodDeclaration
+  : Type MethodDeclarator MethodBody
+  {
+    $$ = new AST_Method($1, $2, $3, 0);
+  }
+  ;
+
+MethodDeclarator
+  : Identifier FormalParameters
+  {
+    $$ = new AST_MethodDeclarator($1, $2);
+  }
+  ;
+
+MethodBody
+  : Block
+  {
+    $$ = new AST_StatementList($1, NULL);
+  }
+  ;
+
+ConstructorDeclaration//statement
+  : ConstructorDeclarator ConstructorBody
+  {
+    $$ = new AST_Method(NULL, $1, $2, 1);//statement
+  }
+  ;
+
+ConstructorDeclarator//statement
+  : Identifier FormalParameters
+  {
+    $$ = new AST_MethodDeclarator($1, $2);//statement
+  }
+  ;
+
+ConstructorBody
+  : '{' ConstructorInvocation BlockStatements '}'
+  {
+    $$ = new AST_StatementList($2, $3);
+  }
+  | '{' ConstructorInvocation '}'
+  {
+    $$ = new AST_StatementList($2, NULL);
+  }
+  | Block
+  {
+    $$ = new AST_StatementList($1, NULL);
+  }
+  ;
+
+ConstructorInvocation
+  : THIS Arguments ';'
+  {
+    $$ = new AST_ConstructorInvoke(0, $2);
+  }
+  | SUPER Arguments ';'
+  {
+    $$ = new AST_ConstructorInvoke(1, $2);
+  }
+  ;
+
+DestructorDeclaration
+  : DestructorDeclarator DestructorBody
+  {
+    $$ = new AST_Method(NULL, $1, $2, -1);
+  }
+  ;
+
+DestructorDeclarator
+  : '~' Identifier '(' ')'
+  {
+    $$ = new AST_MethodDeclarator($2, NULL);
+  }
+  ;
+
+DestructorBody
+  : Block
+  {
+    $$ = new AST_StatementList($1, NULL);
+  }
+  ;
+
+FormalParameters
+  : '(' FormalParameterList ')'
+  {
+    $$ = $2;
+  }
+  | '(' ')'
+  {
+    $$ = new AST_ParameterList(NULL, NULL);
+  }
+  ;
+
+FormalParameterList
+  : FormalParameter ',' FormalParameterList
+  {
+    $$ = new AST_ParameterList($1, $3);
+  }
+  | FormalParameter
+  {
+    $$ = new AST_ParameterList($1, NULL);
+  }
+  ;
+
+FormalParameter
+  : Type VariableDeclaratorID
+  {
+    $$ = new AST_Parameter($1, $2);
+  }
+  ;
+
+VariableDeclaratorID
+  : Identifier
   {
     $$ = $1;
   }
@@ -369,6 +513,17 @@ Statement
   {
     $$ = $1;
   }
+  | DeleteStatement
+  {
+    $$ = $1;
+  }
+  ;
+
+DeleteStatement
+  : DELETE Expression ';'
+  {
+    $$ = new AST_Delete($2);
+  }
   ;
 
 IfThenElseStatement
@@ -440,6 +595,10 @@ ExpressionStatement
 
 StatementExpression
   : Assignment
+  {
+    $$ = $1;
+  }
+  | MethodInvocation
   {
     $$ = $1;
   }
@@ -591,6 +750,29 @@ PrimaryNoNewArray
   {
     $$ = $1;
   }
+  | THIS
+  {
+    $$ = new AST_Variable((char*)"THIS");
+  }
+  | MethodInvocation
+  {
+    $$ = $1;
+  }
+  ;
+
+MethodInvocation
+  : Identifier Arguments
+  {
+    $$ = new AST_MethodInvoke(0, NULL, $1, $2);
+  }
+  | Primary '.' Identifier Arguments
+  {
+    $$ = new AST_MethodInvoke(1, $1, $3, $4);
+  }
+  | SUPER '.' Identifier Arguments
+  {
+    $$ = new AST_MethodInvoke(-1, NULL, $3, $4);
+  }
   ;
 
 AssignmentOperator
@@ -612,12 +794,32 @@ FieldAccess
   {
     $$ = new AST_FieldReference($1,$3);
   }
+  | SUPER '.' Identifier
+  {
+    AST_Variable* superExpress = new AST_Variable((char*)"SUPER");
+    $$ = new AST_FieldReference(superExpress, $3);
+  }
   ;
 
 Arguments
-  : '(' ')'
+  : '(' ArgumentList ')'
   {
-    $$ = new AST_ArgumentsList(NULL);
+    $$ = $2;
+  }
+  | '(' ')'
+  {
+    $$ = NULL;
+  }
+  ;
+
+ArgumentList
+  : Expression ',' ArgumentList
+  {
+    $$ = new AST_ArgumentsList($1, $3);
+  }
+  | Expression
+  {
+    $$ = new AST_ArgumentsList($1, NULL);
   }
   ;
 
@@ -702,8 +904,55 @@ void classDump(){
     else{
       cerr << "\tParent: NULL" << endl;
     }
+    if( (*it)->getDestructor() != NULL )
+      cerr << "\tDestructor: ~" << (*it)->getDestructor()->getName() << "()" << endl;
+    else
+      cerr << "\tDestructor: ~Default()" << endl;
+    cerr << "\tMethods/Constructors:" << endl;
+    SymbolTableRecord* scan = (*it)->getSymbolTable()->methodHead;
+    TypeMethod* tMeth = NULL;
+    while(scan != NULL){
+      cerr << "\t\t";
+      tMeth = (TypeMethod*)scan->type;
+      if( tMeth->isConstructor ){
+        cerr << tMeth->getName();
+        std::vector<Type*> tScan = tMeth->getSig();
+        if( tScan.size() == 1 ){
+          cerr << "()" << endl;
+        }
+        else{
+          cerr << "(";
+          std::vector<Type*>::iterator typeIt;
+          for(typeIt = tScan.begin() + 1; typeIt != tScan.end(); ++typeIt){
+            cerr << (*typeIt)->toString() << " ";
+          }
+          cerr << ");\n";
+        }
+      }
+      else{
+        if( tMeth->returnType == NULL ){
+          cerr << "void " << tMeth->getName() << "(";
+        }
+        else{
+          cerr << tMeth->returnType->toString() << " " << tMeth->getName();
+          std::vector<Type*> tScan = tMeth->getSig();
+          if( tScan.size() == 1 ){
+            cerr << "()" << endl;
+          }
+          else{
+            cerr << "(";
+            std::vector<Type*>::iterator typeIt;
+            for(typeIt = tScan.begin() + 1; typeIt != tScan.end(); ++typeIt){
+              cerr << (*typeIt)->toString() << " ";
+            }
+            cerr << ");\n";
+          }
+        }
+      }
+      scan = scan->next;
+    }
     cerr << "\tFields:" << endl;
-    SymbolTableRecord* scan = (*it)->getSymbolTable()->getList();
+    scan = (*it)->getSymbolTable()->getList();
     while(scan != NULL){
       cerr << "\t\t" << scan->type->toString() << " " << scan->name << endl;
       scan = scan->next;

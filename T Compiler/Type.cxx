@@ -9,6 +9,7 @@ using namespace std;
 #include <stdio.h>
 #include "SymbolTable.h"
 #include "Type.h"
+extern bool terminalErrors;
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Abstract Type class
@@ -79,6 +80,8 @@ TypeClass::TypeClass(char* n){
   name = n;
   parent = NULL;
   classTable = new SymbolTable();
+  hasDeclaredDestructor = false;
+  hasDeclaredConstructor = false;
 }
 
 TypeClass::~TypeClass(){
@@ -96,15 +99,35 @@ bool TypeClass::getItem(char* n, Type*& type){
 }
 
 void TypeClass::add(char* n, Type* type){
-  classTable->install(n,type);
+  if( !strcmp(type->toString(), "method") ){
+    if( ((TypeMethod*)type)->isDestructor && hasDeclaredDestructor ){
+      cerr << "ERROR: Multiple " << n << " destructors declared! Aborting compilation" << endl;
+      terminalErrors = true;
+    }
+    else if( ((TypeMethod*)type)->isDestructor ){
+      hasDeclaredDestructor = true;
+      destructor = (TypeMethod*)type;
+    }
+    else{
+      if(((TypeMethod*)type)->isConstructor)
+        hasDeclaredConstructor = true;
+      if( !classTable->installMethod(((TypeMethod*)type)) )
+        cerr << "ERROR: 1 Redeclaration of " << n << endl;
+    }
+  }
+  else{
+    if( !classTable->install(n,type) ){
+      cerr << "ERROR: 2 Redeclaration of " << n << " " << type->toString() << endl;
+    }
+  }
 }
 
 void TypeClass::setParent(Type* p){
-  parent = p;
+  parent = (TypeClass*)p;
 }
 
 TypeClass* TypeClass::getParent(){
-  return (TypeClass*)parent;
+  return parent;
 }
 
 SymbolTable* TypeClass::getSymbolTable(){
@@ -115,21 +138,69 @@ char* TypeClass::toString(){
   return getName();
 }
 
+TypeMethod* TypeClass::getDestructor(){
+  return destructor;
+}
+
+char* TypeClass::toVMT(){
+  // 6 is length of $VMT\n\t and 8 is length of \n\t.long + a space
+  int size = strlen(name) + 6;
+  if( parent != NULL ) // If class is not Object
+    size += strlen(parent->getName()) + 12 + strlen(name) + 1 + strlen("Destructor");
+  else
+    size += 13 + strlen(name) + 1 + strlen("Destructor");
+  SymbolTableRecord* scan = classTable->methodHead;
+  while( scan != NULL ){
+    if( !strcmp(scan->type->toString(), "method") ){
+      size += strlen(((TypeMethod*)scan->type)->toVMTString(name)) + 8;
+    }
+    scan = scan->next;
+  }
+  char* toRet = new char[size+5];
+  strcpy(toRet, name);
+  strcat(toRet, "$VMT:\n\t");
+  strcat(toRet, ".long ");
+  if( parent != NULL ){
+    strcat(toRet, parent->getName());
+    strcat(toRet, "$VMT");
+  }
+  else
+    strcat(toRet, "0");
+  strcat(toRet, "\n\t.long ");
+  // Can assume that the destructor will exist by code gen time
+  strcat(toRet, name);
+  strcat(toRet, "$Destructor\n");
+  scan = classTable->methodHead;
+  while( scan != NULL ){
+    if( !strcmp(((TypeMethod*)scan->type)->toString(), "method") ){
+      strcat(toRet, "\t.long ");
+      strcat(toRet, ((TypeMethod*)scan->type)->toVMTString(name));
+      strcat(toRet, "\n");
+    }
+    scan = scan->next;
+  }
+  return toRet;
+}
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Method Type class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-TypeMethod::TypeMethod(char* n, Type* o, bool cons, bool dest){
+TypeMethod::TypeMethod(char* n, Type* ret, bool cons, bool dest){
   name  = n;
-  owner = o;
-  symbolTable = new SymbolTable();
+  returnType = ret;
   isConstructor = cons;
   isDestructor  = dest;
+  if( returnType == NULL ){
+    signature.push_back(new TypeNull());
+  }
+  else{
+    signature.push_back(returnType);
+  }
 }
 
 TypeMethod::~TypeMethod(){
   delete name;
-  delete owner;
-  delete symbolTable;
+  delete returnType;
 }
 
 char* TypeMethod::getName(){
@@ -140,29 +211,76 @@ bool TypeMethod::hasParam(char* n){
   std::vector<SymbolTableRecord*>::iterator it;
   for( it = parameters.begin(); it != parameters.end(); ++it){
     if( strcmp((*it)->name,n) == 0 )
-      return false;
+      return true;
   }
-  return true;
+  return false;
 }
 
 bool TypeMethod::addParam(char* n, Type* type){
   if( !hasParam(n) ){
     parameters.push_back(new SymbolTableRecord(n,type));
+    signature.push_back(type);
     return true;
   }
   return false; //Can not have parameters with the same name
 }
 
-bool TypeMethod::getItem(char* n, Type* type){
-  return symbolTable->lookup(n,type);
-}
-
-void TypeMethod::add(char* n, Type* type){
-  symbolTable->install(n,type);
-}
-
 char* TypeMethod::toString(){
-  return getName();
+  return (char*)"method";
+}
+
+char* TypeMethod::toVMTString(char* owner){
+  int size = strlen(name) + 1;
+  std::vector<Type*>::iterator it;
+  it = signature.begin();
+  // Need to skip return type
+  if( it != signature.end() ){
+    while( ++it != signature.end() ){
+      size += strlen((*it)->toString()) + 1 + strlen(owner);
+    }
+  }
+  char* toRet = new char[size];
+  strcat(toRet, owner);
+  strcat(toRet, "$");
+  strcat(toRet, name);
+  it = signature.begin();
+  // Need to skip return type
+  if( it != signature.end() ){
+    while( ++it != signature.end() ){
+      strcat(toRet, "_");
+      strcat(toRet, (*it)->toString());
+    }
+  }
+  return toRet;
+}
+
+std::vector<Type*> TypeMethod::getSig(){
+  return signature;
+}
+
+// Compare the signatures of two TypeMethods
+//bool TypeMethod::operator == (const std::vector<Type*> otherSig) const{
+bool TypeMethod::operator== (const TypeMethod* other ){
+  std::vector<Type*> otherSig = other->signature;
+  if( signature.size() != otherSig.size() )
+    return false;
+  std::vector<Type*>::iterator mySigIt;
+  mySigIt = signature.begin();
+  std::vector<Type*>::iterator otherSigIt;
+  otherSigIt = otherSig.begin();
+  // If any of the parameters types don't line up then the methods are not
+  // comparable
+  while( mySigIt != signature.end() ){
+    if( !strcmp((*mySigIt)->toString(),(*otherSigIt)->toString())){
+      cerr << "DEBUG TypeMethod " << (*mySigIt) << ", " << (*otherSigIt) << endl;
+      mySigIt++;
+      otherSigIt++;
+    }
+    else{
+      return false;
+    }
+  }
+  return true;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

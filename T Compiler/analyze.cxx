@@ -15,7 +15,6 @@ extern SymbolTable* symbolTable;
 extern TypeModule* types;
 extern bool terminalErrors;
 int whileLoopCount = 0;
-
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_List semantic analysis
  *  Call analyze on the list item, if the rest of the list is not NULL
@@ -53,6 +52,7 @@ AST_Node* AST_Variable::analyze(){
   else{
     cerr << line << ": variable " << name << " is not declared!\n";
     type = types->errorType();
+    terminalErrors = true;
   }
   //Set Deref node
   AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
@@ -72,12 +72,33 @@ AST_Node* AST_Variable::analyze(SymbolTable* s){
   else{
     cerr << line << ": variable " << name << " is not declared!\n";
     type = types->errorType();
+    terminalErrors = true;
   }
   //Set Deref node
   AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
   ret->type = types->derefType();
   return (AST_Node*) ret;
 }
+
+/*AST_Node* AST_Variable::analyze(std::vector<SymbolTableRecord*> s){
+  std::vector<SymbolTableRecord*>::iterator it;
+  for( it = s.begin(); it != s.end(); ++s){
+    if( !strcmp((*it)->name, name) ){
+      if( (*it)->type != types->intType() )
+        type = types->classType((*it)->type->toString());
+      else
+        type = types->intType();
+      //Set Deref node
+      AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
+      ret->type = types->derefType();
+      return (AST_Node*) ret;
+    }
+  }
+  cerr << line << ": variable " << name << " is not declared!\n";
+  type = types->errorType();
+  terminalErrors = true;
+  return (AST_Node*) this;
+}*/
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_VariableList semantic analysis
@@ -148,14 +169,6 @@ AST_Node* AST_Assignment::analyze(){
   delete deref;
   // analyze the expression
   rhs = (AST_Expression*) rhs->analyze();
-  // if right is a variable a Deref will be on top so need to remove
-  /*if( rhs->type == types->derefType() ){
-    AST_Deref* derefR = (AST_Deref*)rhs;
-    // strip off the Deref node
-    rhs = derefR->left;
-    derefR->left = NULL;
-    delete derefR;
-  }*/
   // check if error was detected in one of the subtrees
   if((lhs->type == types->errorType()) || (rhs->type == types->errorType())){
     type = types->errorType();
@@ -285,7 +298,6 @@ AST_Node* AST_Add::analyze(){
   }
 
   if(left->type != types->intType() || right->type != types->intType()){
-    cerr<< "\tLeft: " << left->type->toString() << "\n\tRight:" << right->type->toString() << endl;
     cerr << line << ": BUG in AST_Add::analyze: types are different\n";
     type = types->errorType();
     return (AST_Node*) this;
@@ -608,13 +620,14 @@ AST_Node* AST_Cast::analyze(){
  *  Third: Finally, analyze all of the fields
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Class::analyze(){
+  TypeClass* t;
   if( parent == NULL ){
-    TypeClass* t = (TypeClass*)(types->classType(name));
+    t = (TypeClass*)(types->classType(name));
     if( t != NULL )
       t->setParent(types->classType((char*)("Object")));
   }
   else{
-    TypeClass* t = (TypeClass*)(types->classType(name));
+    t = (TypeClass*)(types->classType(name));
     if( t != NULL )
       t->setParent(parent);
   }
@@ -629,15 +642,26 @@ AST_Node* AST_Class::analyze(){
     if( !scan->declarationType ){ //Field
       ((AST_FieldDeclaration*)(scan))->setOwner(name);
     }
-    //else{} //Method
+    else{ //Method
+      ((AST_Method*)scan)->setOwner(name);
+    }
     if( rol != NULL ){
       scan = (AST_Statement*)(rol->getItem());
       rol  = (AST_StatementList*)(rol->getRestOfList());
     }
     else
-      scan = NULL;
+      break;
   }
   ((AST_List*)(fields))->analyze();
+  if( parent != NULL ){ // Don't need to change Object
+    if( !t->hasDeclaredDestructor ){
+      //Build Default Destructor
+    }
+
+    if( !t->hasDeclaredConstructor ){
+      //Build Default
+    }
+  }
   return (AST_Node*) this;
 }
 
@@ -726,6 +750,130 @@ AST_Node* AST_EmptyStatement::analyze(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Convert::analyze(){
   cerr << line << ": BUG in AST_Convert::analyze: should never be called\n";
+  return (AST_Node*) this;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Delete semantic analysis
+ *  Need to type check variableName. If not reference or is null, an error
+ *    is reported. Otherwise a call to variableName's TypeClass's default
+ *    destructor is made.
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Node* AST_Delete::analyze(){
+  Type* typeFromSymbolTable;
+  if(symbolTable->lookup(variableName, typeFromSymbolTable)){
+    if( typeFromSymbolTable == types->intType() ){
+      cerr << line << ": Can not delete int values" << endl;
+      terminalErrors = true;
+    }
+    else if( typeFromSymbolTable == types->nullType() ){
+      cerr << line << ": Can not delete null references" << endl;
+      terminalErrors = true;
+    }
+  }
+  else{
+    cerr << line << ": variable " << variableName << " is not declared!\n";
+    terminalErrors = true;
+  }
+  return (AST_Node*) this;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Method semantic analysis
+ *  Analyze the declarator in relation to the class who owns this method
+ *    and then proceed to analyze the body of the method
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Node* AST_Method::analyze(){
+  TypeClass* owningClass = types->classType(owner);
+  declarator->analyze(type, owningClass, flag);
+  body->analyze();
+  mungedName = declarator->heldType->toVMTString(owner);
+  return (AST_Node*) this;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_MethodDeclarator semantic analysis
+ *  TODO
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Node* AST_MethodDeclarator::analyze(Type* ret, TypeClass* tc, int f){
+  TypeMethod* tm = NULL;
+  if( !f ){
+    tm = new TypeMethod(methodName, ret, false, false);
+    if( params != NULL )
+      params->analyze(tm);
+    tc->add(methodName,tm);
+  }
+  else if( f > 0 ){ // Constructor
+    tm = new TypeMethod(methodName, ret, true, false);
+    if( params != NULL )
+      params->analyze(tm);
+    tc->add(methodName,tm);
+  }
+  else{ // Destructor
+    tm = new TypeMethod(methodName, ret, false, true);
+    // params will be null for destructors
+    tc->add(methodName,tm);
+  }
+  heldType = tm;
+  return (AST_Node*) this;
+}
+
+AST_Node* AST_MethodDeclarator::analyze(){
+  return NULL;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Parameter semantic analysis
+ *  Just check for valid type
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Node* AST_Parameter::analyze(){
+  if( type == types->errorType() || type == types->nullType() || type == types->noType()){
+    type = types->errorType();
+    terminalErrors = true;
+  }
+  return (AST_Node*) this;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_ParameterList semantic analysis
+ *  Check parameter names to catch duplicate names, if duplicate found
+ *    handle with an error
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Node* AST_ParameterList::analyze(TypeMethod* tm){
+  if( !tm->addParam(((AST_Parameter*)(item))->getName(),((AST_Parameter*)(item))->getType())){
+    cerr << line << ": duplicate parameter declaration for " << ((AST_Parameter*)(item))->getName() << endl;
+    terminalErrors = true;
+  }
+  ((AST_Parameter*)(item))->analyze();
+  if(restOfList != NULL)
+    restOfList = (AST_List*)((AST_ParameterList*) restOfList)->analyze(tm);
+  return (AST_Node*) this;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_MethodInvoke semantic analysis
+ *  TODO
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Node* AST_MethodInvoke::analyze(){
+  if( !identifier ){ // Local method invoke
+    //source will be NULL
+  }
+  else if( identifier > 0 ){ // Variable's method invoke
+    ((AST_Variable*)source)->analyze();
+    // type =
+  }
+  else{ // Super method invoke
+    //source will be NULL
+  }
+  return (AST_Node*) this;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_ConstructorInvoke semantic analysis
+ *  TODO
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Node* AST_ConstructorInvoke::analyze(){
+  cerr << "AST_ConstructorInvoke::analyze not yet implemented" << endl;
   return (AST_Node*) this;
 }
 

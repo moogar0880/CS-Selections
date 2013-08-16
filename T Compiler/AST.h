@@ -175,6 +175,7 @@ class AST_Variable: public AST_Expression{
     void dump();
     AST_Node* analyze();
     AST_Node* analyze(SymbolTable* s);
+    //AST_Node* analyze(std::vector<SymbolTableRecord*> s);
     void encode();
 };
 
@@ -337,11 +338,11 @@ class AST_Not: public AST_UnaryOperator{
 
 // Block
 class AST_Block: public AST_Statement{
-  protected:
-    AST_StatementList* list;
   public:
     ~AST_Block();
     AST_Block(AST_StatementList* bl);
+
+    AST_StatementList* list;
 
     void dump();
     void encode();
@@ -468,14 +469,126 @@ class AST_Cast: public AST_Expression{
     void encode();
 };
 
-class AST_ArgumentsList: public AST_Node{
+class AST_Parameter: public AST_Expression{
+  protected:
+    char* name;
+  public:
+    ~AST_Parameter();
+    AST_Parameter(Type* t, AST_Expression* n);
+
+    int index;
+    void dump();
+    AST_Node* analyze();
+    void encode();
+    Type* getType();
+    char* getName();
+};
+
+class AST_ArgumentsList: public AST_List{
   public:
     ~AST_ArgumentsList();
-    AST_ArgumentsList(AST_Node* gonnaBeNull);
+    AST_ArgumentsList(AST_Expression* v, AST_ArgumentsList* l);
 
     void dump();
     AST_Node* analyze();
     void encode();
+    int getLength();
+};
+
+class AST_ParameterList: public AST_List{
+  public:
+    ~AST_ParameterList();
+    // p is the Parameter Object
+    AST_ParameterList(AST_Parameter* p, AST_ParameterList* l);
+
+    void dump();
+    AST_Node* analyze(TypeMethod* tm);
+    void encode();
+};
+
+class AST_ConstructorInvoke: public AST_Statement{
+  protected:
+    // Used to distinguish between this and super calls
+    // 0 = THIS, 1 = SUPER
+    int identifier;
+    AST_ArgumentsList* params;
+  public:
+    AST_ConstructorInvoke(int i, AST_ArgumentsList* p);
+    ~AST_ConstructorInvoke();
+
+    void dump();
+    AST_Node* analyze();
+    void encode();
+};
+
+class AST_Delete: public AST_Statement{
+  protected:
+    Type* type;
+    AST_Expression* variable;
+    char* variableName;
+  public:
+    AST_Delete(AST_Expression* v);
+    ~AST_Delete();
+
+    void dump();
+    AST_Node* analyze();
+    void encode();
+};
+
+class AST_MethodInvoke: public AST_Expression{
+  protected:
+    // Used to distinguish between this and super calls
+    // 0 = local method, 1 = variable method, -1 = SUPER method
+    int identifier;
+    AST_Expression* source;
+    char* methodName;
+    AST_ArgumentsList* params;
+    int methodOffset;
+  public:
+    // i is the status bit to be used to easily distinguish between types of
+    // method invocations
+    AST_MethodInvoke(int i, AST_Expression* s, AST_Expression* id, AST_ArgumentsList* p);
+    ~AST_MethodInvoke();
+
+    void dump();
+    AST_Node* analyze();
+    void encode();
+};
+
+class AST_MethodDeclarator: public AST_Statement{
+  public:
+    AST_MethodDeclarator(AST_Expression* n, AST_ParameterList* p);
+    ~AST_MethodDeclarator();
+
+    AST_ParameterList* params;
+    TypeMethod* heldType;
+    char* methodName;
+    void dump();
+    AST_Node* analyze(Type* ret, TypeClass* tc, int f);
+    AST_Node* analyze();
+    void encode();
+    char* getName();
+};
+
+class AST_Method: public AST_Statement{
+  protected:
+    Type* type;
+    AST_MethodDeclarator* declarator;
+    AST_StatementList* body;
+    int flag;
+    char* owner;
+    char* mungedName;
+  public:
+    // id is the MethodDeclarator
+    // body is the Block holding the statmentlist
+    // Flags: 0 - Method, 1 - Constructor, -1 - Destructor
+    AST_Method(Type* t, AST_Statement* id, AST_StatementList* b, int f);
+    ~AST_Method();
+
+    void dump();
+    AST_Node* analyze();
+    void encode();
+    void setOwner(char* n);
 };
 
 class AST_ClassInstance: public AST_Expression{

@@ -1,7 +1,8 @@
 #ifndef _SYMBOLTABLE_H
 #define _SYMBOLTABLE_H
-
+#include <vector>
 class Type;
+class TypeMethod;
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Symbol Table for T language
  *
@@ -18,6 +19,7 @@ class SymbolTableRecord{
     ~SymbolTableRecord();
     SymbolTableRecord(char*, Type*);
     void dump();
+    int getStringLength();
     SymbolTableRecord* next;
     char* name;
     Type* type;
@@ -28,10 +30,7 @@ class SymbolTableRecord{
  *  The SymbolTable Proper
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 class SymbolTable{
-  public:
-    SymbolTableRecord* head;
-
-  public:
+public:
     ~SymbolTable();
     SymbolTable();
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,14 +38,20 @@ class SymbolTable{
      *  if found, type returned through the second (reference) parameter
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     bool lookup(char* name, Type*& type);
+    bool lookupMethod(TypeMethod* m);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      * Returns true if successful and name and type are stored in a STR
      * Fails if name is already in the ST, in this case nothing is changed
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     bool install(char* name, Type* type);
+    bool installMethod(TypeMethod* type);
 
     void dump();
+    int  getStringLength();
+    int  size;
     SymbolTableRecord* getList();
+    SymbolTableRecord* head;
+    SymbolTableRecord* methodHead;
 };
 #endif

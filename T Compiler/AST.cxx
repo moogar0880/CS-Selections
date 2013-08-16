@@ -477,6 +477,31 @@ void AST_Continue::dump(){
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Parameter Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Parameter::AST_Parameter(Type* t, AST_Expression* n){
+  type = t;
+  name = ((AST_Variable*)(n))->name;
+}
+
+AST_Parameter::~AST_Parameter(){
+  delete type;
+  delete name;
+}
+
+void AST_Parameter::dump(){
+  cerr << type->toString() << " " << name << "\n";
+}
+
+Type* AST_Parameter::getType(){
+  return type;
+}
+
+char* AST_Parameter::getName(){
+  return name;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_Class Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Class::AST_Class(AST_Expression* n, AST_StatementList* l, Type* p){
@@ -535,13 +560,17 @@ AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
     list->concat(l2);
   }
 
-  //AST_Variable* objectName = new AST_Variable(((char*) "Object"));
   //Object class has no parent and no non-method fields for phase 3
-  //AST_Class* objectClass = new AST_Class( objectName, NULL, NULL );
   TypeClass* obj = (TypeClass*)(types->createNewClassType((char *)"Object"));
   if( obj != NULL ){
     obj->setParent(NULL);
-    //need to add Object's constructor/destructor
+    TypeMethod* objConstructor = new TypeMethod((char*)"Object", NULL, true, false);
+    TypeMethod* objDestructor  = new TypeMethod((char*)"Object", NULL, false, true);
+    TypeMethod* equals         = new TypeMethod((char*)"equals", types->intType(), false, false);
+    equals->addParam((char*)"o", obj);
+    obj->add((char*)"Object", objConstructor);
+    obj->add((char*)"Object", objDestructor);
+    obj->add((char*)"equals", equals);
   }
   if( list != NULL )
     listConvert(list);
@@ -602,12 +631,24 @@ void AST_Cast::dump(){
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_ArgumentsList Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-AST_ArgumentsList::AST_ArgumentsList(AST_Node* gonnaBeNull){}
+AST_ArgumentsList::AST_ArgumentsList(AST_Expression* v, AST_ArgumentsList* l)
+  : AST_List((AST_Node*) v, l){}
 
 AST_ArgumentsList::~AST_ArgumentsList(){}
 
 void AST_ArgumentsList::dump(){
   cerr << "Argument List" << endl;
+}
+
+int AST_ArgumentsList::getLength(){
+  int i = 0;
+  AST_Node* scan = item;
+  while(scan != NULL){
+    i++;
+    scan = restOfList->getItem();
+
+  }
+  return i;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -651,7 +692,7 @@ void AST_FieldDeclaration::setOwner(char* n){
     scan = (AST_Variable*)(list->getItem());
     rol = (AST_VariableList*)(list->getRestOfList());
   }
-  
+
   Type* t = NULL;
   while(scan != NULL){
     if( types->classType(n)->getItem(scan->name, t) ){
@@ -728,6 +769,145 @@ AST_EmptyStatement::~AST_EmptyStatement(){}
 
 void AST_EmptyStatement::dump(){
   cerr << "Empty\n";
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_ParameterList Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_ParameterList::AST_ParameterList(AST_Parameter* p, AST_ParameterList* l)
+  : AST_List((AST_Node*) p, l){}
+
+AST_ParameterList::~AST_ParameterList(){}
+
+void AST_ParameterList::dump(){
+  ((AST_Parameter*)(item))->dump();
+  if( restOfList != NULL ){
+    cerr << ", ";
+    ((AST_ParameterList*)(restOfList))->dump();
+  }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *  AST_ConstructorInvoke
+ *  The identifier int will be set to either 0 (THIS) or 1 (SUPER) to
+ *    specify which constructor is to be called. methodName will be NULL,
+ *    as the constructor name is the class name and the params could be
+ *    NULL, depending on the constructor being called.
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+AST_ConstructorInvoke::AST_ConstructorInvoke(int i, AST_ArgumentsList* p){
+  identifier = i;
+  params = p;
+}
+
+AST_ConstructorInvoke::~AST_ConstructorInvoke(){
+  delete params;
+}
+
+void AST_ConstructorInvoke::dump(){
+  cerr << "Constructor Invoke " << endl;
+  if( params != NULL )
+    params->dump();
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *  AST_Delete aka DestructorInvoke
+ *  If flag is set to -1 a Destructor is being invoked.
+ *    This means that the DELETE keyword has been used. Because
+ *    destructors have no arguments the identifier, methodName, and params
+ *    will all be NULL. The destructor for the TypeClass of the source
+ *    variable will need to be invoked.
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Delete::AST_Delete(AST_Expression* v){
+  variableName = ((AST_Variable*)v)->name;
+  variable = v;
+}
+
+AST_Delete::~AST_Delete(){
+  delete variableName;
+  delete variable;
+}
+
+void AST_Delete::dump(){
+  cerr << "Delete " << variableName << endl;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_MethodInvoke Class
+ *  Used to distinguish between Method/Constructor/Destructor
+ *    0 = local method, 1 = variable method, -1 = SUPER method
+ *  This means that the source (s, variable calling method) will not be
+ *    null. The methodName (id) will be the name of the method being
+ *    invoked. Params (p) could or could not be null depending on the
+ *    method being called. The identifier will not matter for methods as
+ *    it is used to distinguish between SUPER and THIS calls.
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_MethodInvoke::AST_MethodInvoke(int i, AST_Expression* s, AST_Expression* id, AST_ArgumentsList* p){
+  identifier = i;
+  source     = s; // could be NULL
+  methodName = ((AST_Variable*)id)->name;
+  params     = p;
+}
+
+AST_MethodInvoke::~AST_MethodInvoke(){
+  delete source;
+  delete methodName;
+  delete params;
+}
+
+void AST_MethodInvoke::dump(){
+  cerr << "MethodInvoke\n";
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_MethodDeclarator Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_MethodDeclarator::AST_MethodDeclarator(AST_Expression* n, AST_ParameterList* p){
+  methodName = ((AST_Variable*)(n))->name;
+  if(p->getItem() != NULL)
+    params = p;
+}
+
+AST_MethodDeclarator::~AST_MethodDeclarator(){
+  delete methodName;
+  delete params;
+  delete heldType;
+}
+
+void AST_MethodDeclarator::dump(){
+  cerr << "Method " << methodName << "\n";
+  if( params != NULL )
+    params->dump();
+}
+
+char* AST_MethodDeclarator::getName(){
+  return methodName;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_Method Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_Method::AST_Method(Type* t, AST_Statement* id, AST_StatementList* b, int f){
+  type = t;
+  flag = f;
+  declarator = ((AST_MethodDeclarator*)(id));
+  if( b != NULL )
+    body = ((AST_Block*)(b))->list;
+  declarationType = 1;
+}
+
+AST_Method::~AST_Method(){
+  delete type;
+  delete declarator;
+  delete body;
+}
+
+void AST_Method::dump(){
+  cerr << "Method\n";
+}
+
+void AST_Method::setOwner(char* n){
+  owner = n;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

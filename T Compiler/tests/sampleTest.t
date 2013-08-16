@@ -1,6 +1,7 @@
 class A
 {
   int i;
+  int f(){ out 42;}
 }
 
 int main()
