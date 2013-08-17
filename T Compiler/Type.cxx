@@ -142,44 +142,23 @@ TypeMethod* TypeClass::getDestructor(){
   return destructor;
 }
 
-char* TypeClass::toVMT(){
-  // 6 is length of $VMT\n\t and 8 is length of \n\t.long + a space
-  int size = strlen(name) + 6;
-  if( parent != NULL ) // If class is not Object
-    size += strlen(parent->getName()) + 12 + strlen(name) + 1 + strlen("Destructor");
+void TypeClass::toVMT(){
+  cout << name << "$VMT:\n\t.long";
+  if( parent != NULL )
+    cout << parent->getName() << "$VMT";
   else
-    size += 13 + strlen(name) + 1 + strlen("Destructor");
+    cout << "0";
+  // Can assume that the destructor will exist by code gen time
+  cout << "\n\t.long " << name << "$Destructor\n";
   SymbolTableRecord* scan = classTable->methodHead;
   while( scan != NULL ){
-    if( !strcmp(scan->type->toString(), "method") ){
-      size += strlen(((TypeMethod*)scan->type)->toVMTString(name)) + 8;
-    }
-    scan = scan->next;
-  }
-  char* toRet = new char[size+5];
-  strcpy(toRet, name);
-  strcat(toRet, "$VMT:\n\t");
-  strcat(toRet, ".long ");
-  if( parent != NULL ){
-    strcat(toRet, parent->getName());
-    strcat(toRet, "$VMT");
-  }
-  else
-    strcat(toRet, "0");
-  strcat(toRet, "\n\t.long ");
-  // Can assume that the destructor will exist by code gen time
-  strcat(toRet, name);
-  strcat(toRet, "$Destructor\n");
-  scan = classTable->methodHead;
-  while( scan != NULL ){
     if( !strcmp(((TypeMethod*)scan->type)->toString(), "method") ){
-      strcat(toRet, "\t.long ");
-      strcat(toRet, ((TypeMethod*)scan->type)->toVMTString(name));
-      strcat(toRet, "\n");
+      cout << "\t.long ";
+      ((TypeMethod*)scan->type)->toVMTString(name);
+      cout << "\n";
     }
     scan = scan->next;
   }
-  return toRet;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -207,6 +186,20 @@ char* TypeMethod::getName(){
   return name;
 }
 
+SymbolTable* TypeMethod::exportAsSymbolTable(){
+  SymbolTable* toRet = new SymbolTable();
+  std::vector<SymbolTableRecord*>::iterator it;
+  for( it = parameters.end(); it != parameters.begin(); --it){
+    if( toRet->head == NULL )
+      toRet->head = (*it);
+    else{
+      (*it)->next = toRet->head;
+      toRet->head = (*it);
+    }
+  }
+  return toRet;
+}
+
 bool TypeMethod::hasParam(char* n){
   std::vector<SymbolTableRecord*>::iterator it;
   for( it = parameters.begin(); it != parameters.end(); ++it){
@@ -229,25 +222,29 @@ char* TypeMethod::toString(){
   return (char*)"method";
 }
 
-char* TypeMethod::toVMTString(char* owner){
-  int size = strlen(name) + 1;
+void TypeMethod::toVMTString(char* owner){
+  cout << owner << "$" << name;
+  std::vector<Type*>::iterator it;
+  it = signature.begin();
+  // Need to skip return type
+  if( it != signature.end() ){
+    while( ++it != signature.end() )
+      cout << "_" << (*it)->toString();
+  }
+}
+
+char* TypeMethod::getMunged(char* owner){
+  int size = 500;
+  char* toRet = new char[size];
+  strcpy(toRet, owner);
+  strcat(toRet, "$");
+  strcat(toRet, name);
   std::vector<Type*>::iterator it;
   it = signature.begin();
   // Need to skip return type
   if( it != signature.end() ){
     while( ++it != signature.end() ){
-      size += strlen((*it)->toString()) + 1 + strlen(owner);
-    }
-  }
-  char* toRet = new char[size];
-  strcat(toRet, owner);
-  strcat(toRet, "$");
-  strcat(toRet, name);
-  it = signature.begin();
-  // Need to skip return type
-  if( it != signature.end() ){
-    while( ++it != signature.end() ){
-      strcat(toRet, "_");
+      strcat(toRet,"_");
       strcat(toRet, (*it)->toString());
     }
   }

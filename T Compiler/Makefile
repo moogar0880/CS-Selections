@@ -8,9 +8,9 @@
 #
 
 tc: lex.yy.o y.tab.o main.o AST.o Type.o SymbolTable.o StringPool.o \
-       analyze.o encode.o
+       analyze.o encode.o ScopeManager.o
 	g++ -g lex.yy.o y.tab.o main.o AST.o Type.o SymbolTable.o \
-	  StringPool.o analyze.o encode.o -o tc
+	  StringPool.o analyze.o encode.o ScopeManager.o -o tc
 
 lex.yy.o: lex.yy.c y.tab.h
 	g++ -c -g lex.yy.c
@@ -24,7 +24,7 @@ y.tab.o: y.tab.c
 y.tab.h y.tab.c: parse.yy AST.h Type.h
 	bison -y -d parse.yy
 
-main.o: main.cxx SymbolTable.h Type.h StringPool.h
+main.o: main.cxx SymbolTable.h Type.h StringPool.h ScopeManager.h
 	g++ -c -Wall -g main.cxx
 
 AST.o: AST.cxx AST.h Type.h
@@ -44,6 +44,9 @@ SymbolTable.o: SymbolTable.cxx SymbolTable.h Type.h
 
 StringPool.o: StringPool.cxx StringPool.h
 	g++ -c -Wall -g StringPool.cxx
+
+ScopeManager.o: ScopeManager.cxx ScopeManager.h
+	g++ -c -Wall -g ScopeManager.cxx
 
 y.output: parse.yy
 	bison -y -d -v parse.yy

@@ -10,6 +10,7 @@ using namespace std;
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include "ScopeManager.h"
 
 // prototype for bison-generated parser
 int yyparse();
@@ -31,6 +32,9 @@ SymbolTable* symbolTable;
 
 // global type module
 TypeModule* types;
+
+// global scope manager
+ScopeManager* scopeManager;
 
 bool before, after, classes, terminalErrors;
 
@@ -70,6 +74,9 @@ int main(int argc, char* argv[])
 
   // create a symbol table
   symbolTable = new SymbolTable();
+
+  // create the scope manager
+  scopeManager = new ScopeManager();
 
   // set yydebug to 1 to enable bison debugging
   // (preprocessor symbol YYDEBUG must also be 1 here and in parse.yy)

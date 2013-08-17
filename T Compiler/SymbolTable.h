@@ -36,9 +36,10 @@ public:
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      * Returns true if name is found
      *  if found, type returned through the second (reference) parameter
+     *  In the case of lookupMethod the return type is passed by reference
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     bool lookup(char* name, Type*& type);
-    bool lookupMethod(TypeMethod* m);
+    bool lookupMethod(TypeMethod* m, Type*& type);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      * Returns true if successful and name and type are stored in a STR

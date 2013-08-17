@@ -8,11 +8,14 @@ using namespace std;
 #include "AST.h"
 #include "SymbolTable.h"
 #include "Type.h"
+#include "ScopeManager.h"
 
 // global symbol table is in main.cxx
 extern SymbolTable* symbolTable;
 // global type module is in main.cxx
 extern TypeModule* types;
+// global scope manager is in main.cxx
+extern ScopeManager* scopeManager;
 extern bool terminalErrors;
 int whileLoopCount = 0;
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,7 +46,7 @@ AST_Node* AST_IntegerLiteral::analyze(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Variable::analyze(){
   Type* typeFromSymbolTable;
-  if(symbolTable->lookup(name, typeFromSymbolTable)){
+  if(scopeManager->currentScope()->lookup(name, typeFromSymbolTable)){
     type = typeFromSymbolTable;
     if( type != types->intType() ){
       type = types->classType(type->toString());
@@ -63,7 +66,7 @@ AST_Node* AST_Variable::analyze(){
 //Class field analyzer
 AST_Node* AST_Variable::analyze(SymbolTable* s){
   Type* typeFromSymbolTable;
-  if(s->lookup(name, typeFromSymbolTable)){
+  if(scopeManager->currentScope()->lookup(name, typeFromSymbolTable)){
     type = typeFromSymbolTable;
     if( type != types->intType() ){
       type = types->classType(type->toString());
@@ -80,26 +83,6 @@ AST_Node* AST_Variable::analyze(SymbolTable* s){
   return (AST_Node*) ret;
 }
 
-/*AST_Node* AST_Variable::analyze(std::vector<SymbolTableRecord*> s){
-  std::vector<SymbolTableRecord*>::iterator it;
-  for( it = s.begin(); it != s.end(); ++s){
-    if( !strcmp((*it)->name, name) ){
-      if( (*it)->type != types->intType() )
-        type = types->classType((*it)->type->toString());
-      else
-        type = types->intType();
-      //Set Deref node
-      AST_Expression* ret = (AST_Expression*) new AST_Deref(this);
-      ret->type = types->derefType();
-      return (AST_Node*) ret;
-    }
-  }
-  cerr << line << ": variable " << name << " is not declared!\n";
-  type = types->errorType();
-  terminalErrors = true;
-  return (AST_Node*) this;
-}*/
-
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_VariableList semantic analysis
  *  If VariableList item Variable can be found in symbol table analyze it
@@ -107,7 +90,7 @@ AST_Node* AST_Variable::analyze(SymbolTable* s){
  *  If VariableList restOfList is not NULL recurse down the list
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_VariableList::analyze(Type* t){
-  if(!symbolTable->install(((AST_Variable*)(item))->name, t)){
+  if(!scopeManager->currentScope()->install(((AST_Variable*)(item))->name, t)){
     cerr << line << ": duplicate declaration for " << t->toString() << " " <<
       ((AST_Variable*)(item))->name << endl;
   }
@@ -118,7 +101,7 @@ AST_Node* AST_VariableList::analyze(Type* t){
 }
 //Special VariableList analysis for Class fields
 AST_Node* AST_VariableList::analyze(Type* t, SymbolTable* s){
-  if(!s->install(((AST_Variable*)(item))->name, t)){
+  if(!scopeManager->currentScope()->install(((AST_Variable*)(item))->name, t)){
     cerr << line << ": custom symbol table duplicate declaration for " << t->toString() << " " <<
       ((AST_Variable*)(item))->name << endl;
   }
@@ -132,7 +115,9 @@ AST_Node* AST_VariableList::analyze(Type* t, SymbolTable* s){
  *  Analyze the MainFunction's StatementList
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_MainFunction::analyze(){
+  scopeManager->setMain();
   list->analyze();
+  scopeManager->clearMain();
   return (AST_Node*) this;
 }
 
@@ -191,11 +176,6 @@ AST_Node* AST_Assignment::analyze(){
       type = types->errorType();
       terminalErrors = true;
     }
-    //Need to check for possible widening
-    AST_Expression* newNode = new AST_Convert(rhs);
-
-    newNode->type = lhs->type;
-    rhs = newNode;
   }
   else{
     type = rhs->type;
@@ -475,7 +455,7 @@ AST_Node* AST_Equality::analyze(){
     TypeClass* scan = l;
     while( scan != NULL ){
       if( !strcmp(scan->getName(),r->getName()) ){
-        AST_Expression* newNode = new AST_Convert(left);
+        AST_Expression* newNode = new AST_Cast(right,left);
         newNode->type = types->classType(r->toString());
         left = newNode;
         type = types->intType();
@@ -488,7 +468,7 @@ AST_Node* AST_Equality::analyze(){
     scan = r;
     while( scan != NULL ){
       if( !strcmp(scan->getName(),l->getName()) ){
-        AST_Expression* newNode = new AST_Convert(right);
+        AST_Expression* newNode = new AST_Cast(left,right);
         newNode->type = types->classType(l->toString());
         right = newNode;
         type = types->intType();
@@ -604,10 +584,12 @@ AST_Node* AST_CompilationUnit::analyze(){
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_Cast semantic analysis
- *
+ * Not much is done during analysis. The types are checked at runtime
+ *  using a RTS function named checkCast
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Cast::analyze(){
-  cerr << "AST_Cast::analyze() not yet implemented\n";
+  castType = types->classType(((AST_Variable*)expr)->name);
+  cast->analyze();
   return (AST_Node*) this;
 }
 
@@ -620,6 +602,7 @@ AST_Node* AST_Cast::analyze(){
  *  Third: Finally, analyze all of the fields
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Class::analyze(){
+  scopeManager->setClass(name);
   TypeClass* t;
   if( parent == NULL ){
     t = (TypeClass*)(types->classType(name));
@@ -662,6 +645,7 @@ AST_Node* AST_Class::analyze(){
       //Build Default
     }
   }
+  scopeManager->clearClass();
   return (AST_Node*) this;
 }
 
@@ -673,7 +657,7 @@ AST_Node* AST_Class::analyze(){
  *  Note: A Deref node is always put on top of a field reference
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_FieldReference::analyze(){
-  symbolTable->lookup(owner, type);
+  scopeManager->currentScope()->lookup(owner, type);
   if( types->classType(((TypeClass*)(type))->toString()) == NULL ){
     cerr << "Bad cast: " << ((TypeClass*)(type))->toString() << endl;
     terminalErrors = true;
@@ -724,6 +708,7 @@ AST_Node* AST_ClassInstance::analyze(){
  *
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_ArgumentsList::analyze(){
+  cerr << "AST_ArgumentsList::analyze" << endl;
   return (AST_Node*) this;
 }
 
@@ -745,15 +730,6 @@ AST_Node* AST_EmptyStatement::analyze(){
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * AST_Convert semantic analysis
- *  These nodes are added in analyze but should never actually be analyzed
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-AST_Node* AST_Convert::analyze(){
-  cerr << line << ": BUG in AST_Convert::analyze: should never be called\n";
-  return (AST_Node*) this;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_Delete semantic analysis
  *  Need to type check variableName. If not reference or is null, an error
  *    is reported. Otherwise a call to variableName's TypeClass's default
@@ -761,7 +737,7 @@ AST_Node* AST_Convert::analyze(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_Delete::analyze(){
   Type* typeFromSymbolTable;
-  if(symbolTable->lookup(variableName, typeFromSymbolTable)){
+  if(scopeManager->currentScope()->lookup(variableName, typeFromSymbolTable)){
     if( typeFromSymbolTable == types->intType() ){
       cerr << line << ": Can not delete int values" << endl;
       terminalErrors = true;
@@ -772,7 +748,7 @@ AST_Node* AST_Delete::analyze(){
     }
   }
   else{
-    cerr << line << ": variable " << variableName << " is not declared!\n";
+    cerr << line << ": 762 variable " << variableName << " is not declared!\n";
     terminalErrors = true;
   }
   return (AST_Node*) this;
@@ -786,8 +762,10 @@ AST_Node* AST_Delete::analyze(){
 AST_Node* AST_Method::analyze(){
   TypeClass* owningClass = types->classType(owner);
   declarator->analyze(type, owningClass, flag);
+  //cerr << declarator->methodName << "\n";
   body->analyze();
-  mungedName = declarator->heldType->toVMTString(owner);
+  mungedName = declarator->heldType->getMunged(owner);
+  scopeManager->clearMethod();
   return (AST_Node*) this;
 }
 
@@ -799,18 +777,21 @@ AST_Node* AST_MethodDeclarator::analyze(Type* ret, TypeClass* tc, int f){
   TypeMethod* tm = NULL;
   if( !f ){
     tm = new TypeMethod(methodName, ret, false, false);
+    scopeManager->setMethod(tm);
     if( params != NULL )
       params->analyze(tm);
     tc->add(methodName,tm);
   }
   else if( f > 0 ){ // Constructor
     tm = new TypeMethod(methodName, ret, true, false);
+    scopeManager->setMethod(tm);
     if( params != NULL )
       params->analyze(tm);
     tc->add(methodName,tm);
   }
   else{ // Destructor
     tm = new TypeMethod(methodName, ret, false, true);
+    scopeManager->setMethod(tm);
     // params will be null for destructors
     tc->add(methodName,tm);
   }
@@ -818,6 +799,7 @@ AST_Node* AST_MethodDeclarator::analyze(Type* ret, TypeClass* tc, int f){
   return (AST_Node*) this;
 }
 
+// This is only here to make the compiler happy, it will never get called
 AST_Node* AST_MethodDeclarator::analyze(){
   return NULL;
 }
@@ -852,18 +834,73 @@ AST_Node* AST_ParameterList::analyze(TypeMethod* tm){
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_MethodInvoke semantic analysis
- *  TODO
+ *  CASE 0: A local method is being called from within another method.
+ *    This means that we must be within a Class, so the scopeManager
+ *    pulls in the currentClass and checks it's MethodTable for the given
+ *    method.
+ *  Case 1: A variable calls one of it's methods. Because method
+ *    invocations like this can occur in either methods or the main block
+ *    we rely on the scopeManager to pull in the correct SymbolTable to
+ *    search for the method
+ *  Case 2: A call to one of 'SUPERS' methods is made. Because the main
+ *    block has no parent type, this call can only come from within a
+ *    Class's method. The current class is pulled in, we re-direct to
+ *    the current class's parent, and search it's SymbolTable for the
+ *    provided method
+ *
+ *  NOTE: The type of a MethodInvoke is the return type of the method
+ *    being called
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_MethodInvoke::analyze(){
-  if( !identifier ){ // Local method invoke
-    //source will be NULL
+  if( !identifier ){ // Local method invoke source will be NULL
+    TypeMethod* search = new TypeMethod(methodName,types->nullType(), false, false);
+    AST_Expression* arg = (AST_Expression*)params->getItem();
+    AST_ArgumentsList* l = params;
+    while(arg != NULL){
+      ((AST_Variable*)arg)->analyze();
+      search->addParam(((AST_Variable*)arg)->name, ((AST_Variable*)arg)->type);
+      if(l != NULL){
+        arg = (AST_Expression*)l->getItem();
+        l = (AST_ArgumentsList*)l->getRestOfList();
+      }
+      else{
+        arg = NULL;
+      }
+    }
+    if(!scopeManager->getClass()->getSymbolTable()->lookupMethod(search,type)){
+      cerr << line << ": method " << scopeManager->getClass()->getName() << "." << methodName << " does not exist" << endl;
+      type = types->errorType();
+      terminalErrors = true;
+    }
   }
   else if( identifier > 0 ){ // Variable's method invoke
+    if(!scopeManager->currentScope()->lookup(((AST_Variable*)source)->name, type)){
+      cerr << line << ": variable " << ((AST_Variable*)source)->name << " does not exist" << endl;
+      type = types->errorType();
+      terminalErrors = true;
+    }
     ((AST_Variable*)source)->analyze();
-    // type =
   }
-  else{ // Super method invoke
-    //source will be NULL
+  else{ // Super method invoke source will be NULL
+    TypeMethod* search = new TypeMethod(methodName,types->nullType(), false, false);
+    AST_Expression* arg = (AST_Expression*)params->getItem();
+    AST_ArgumentsList* l = params;
+    while(arg != NULL){
+      ((AST_Variable*)arg)->analyze();
+      search->addParam(((AST_Variable*)arg)->name, ((AST_Variable*)arg)->type);
+      if(l != NULL){
+        arg = (AST_Expression*)l->getItem();
+        l = (AST_ArgumentsList*)l->getRestOfList();
+      }
+      else{
+        arg = NULL;
+      }
+    }
+    if(!scopeManager->getClass()->getParent()->getSymbolTable()->lookupMethod(search,type)){
+      cerr << line << ": method " << scopeManager->getClass()->getParent()->getName() << "." << methodName << " does not exist" << endl;
+      type = types->errorType();
+      terminalErrors = true;
+    }
   }
   return (AST_Node*) this;
 }
@@ -873,7 +910,39 @@ AST_Node* AST_MethodInvoke::analyze(){
  *  TODO
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_ConstructorInvoke::analyze(){
-  cerr << "AST_ConstructorInvoke::analyze not yet implemented" << endl;
+  TypeMethod* search = new TypeMethod(scopeManager->getClass()->getName(),types->nullType(), true, false);
+  AST_Expression* arg = (AST_Expression*)params->getItem();
+  AST_ArgumentsList* l = params;
+  while(arg != NULL){
+    ((AST_Variable*)arg)->analyze();
+    search->addParam(((AST_Variable*)arg)->name, ((AST_Variable*)arg)->type);
+    if(l != NULL){
+      arg = (AST_Expression*)l->getItem();
+      l = (AST_ArgumentsList*)l->getRestOfList();
+    }
+    else{
+      arg = NULL;
+    }
+  }
+  Type* junk;
+  if( !identifier ){ // A call to a THIS constructor
+    if(!scopeManager->getClass()->getSymbolTable()->lookupMethod(search,junk)){
+      cerr << line << ": Constructor " << scopeManager->getClass()->getName() << " does not exist" << endl;
+      terminalErrors = true;
+    }
+  }
+  else{ // A call to a SUPER constructor
+    if( scopeManager->getClass()->getParent() != NULL ){
+      if(!scopeManager->getClass()->getParent()->getSymbolTable()->lookupMethod(search,junk)){
+        cerr << line << ": Constructor " << scopeManager->getClass()->getParent()->getName() << " does not exist" << endl;
+        terminalErrors = true;
+      }
+    }
+    else{
+      cerr << line << ": SUPER keyword can not be used with Object class"<< endl;
+      terminalErrors = true;
+    }
+  }
   return (AST_Node*) this;
 }
 

@@ -45,7 +45,8 @@ AST_List::AST_List(AST_Node* newItem, AST_List* list){
 }
 
 AST_List::~AST_List(){
-  delete item;
+  if( item != NULL )
+    delete item;
   if (restOfList != NULL) delete restOfList;
 }
 
@@ -137,9 +138,7 @@ AST_ProgramList::AST_ProgramList(AST_CompilationUnit* c):AST_List((AST_Node*)c,
     cerr << "AST_ProgramList::AST_ProgramList called" << endl;
   program = c;
 }
-AST_ProgramList::~AST_ProgramList(){
-  //delete main;
-}
+AST_ProgramList::~AST_ProgramList(){}
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_BinaryOperator Class
@@ -400,6 +399,7 @@ AST_Block::~AST_Block(){
 
 void AST_Block::dump(){
   cerr << "New Block\n";
+  list->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -419,6 +419,8 @@ AST_IfThenElse::~AST_IfThenElse(){
 
 void AST_IfThenElse::dump(){
   cerr << "If " << condition << " else\n";
+  ifstat->dump();
+  elstat->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -437,6 +439,7 @@ AST_While::~AST_While(){
 
 void AST_While::dump(){
   cerr << "While " << condition << "\n";
+  stat->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -451,7 +454,8 @@ AST_Return::~AST_Return(){
 }
 
 void AST_Return::dump(){
-  cerr << "Return " << var << "\n";
+  cerr << "Return\n";
+  var->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -588,24 +592,6 @@ void AST_CompilationUnit::listConvert(AST_List* l){
   }
 }
 
-// Helper function to determine whether two AST_Classes are related
-bool AST_Node::areComparable(AST_Node* l, AST_Node* r){
-  /*AST_Class* left = (AST_Class*) l;
-  AST_Class* right = (AST_Class*) r;
-  std::vector<AST_Class*>::iterator it;
-  it = std::find(globalClassList.begin(), globalClassList.end(), left);
-  if( (*it)->getParent() == NULL )
-    return false; // reached object and parent not found
-  else{
-    while( it != globalClassList.end() ){
-      if( (*it)->getParent() == types->classType(right->getName()))
-        return true;
-      ++it;
-    }
-  }*/
-  return false; // classes are not related
-}
-
 AST_CompilationUnit::~AST_CompilationUnit(){}
 
 void AST_CompilationUnit::dump(){
@@ -638,6 +624,8 @@ AST_ArgumentsList::~AST_ArgumentsList(){}
 
 void AST_ArgumentsList::dump(){
   cerr << "Argument List" << endl;
+  item->dump();
+  restOfList->dump();
 }
 
 int AST_ArgumentsList::getLength(){
@@ -646,7 +634,6 @@ int AST_ArgumentsList::getLength(){
   while(scan != NULL){
     i++;
     scan = restOfList->getItem();
-
   }
   return i;
 }
@@ -666,6 +653,7 @@ AST_ClassInstance::~AST_ClassInstance(){
 
 void AST_ClassInstance::dump(){
   cerr << "Class Instance of type " << type << endl;
+  arguments->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -686,30 +674,6 @@ void AST_FieldDeclaration::dump(){
 
 void AST_FieldDeclaration::setOwner(char* n){
   owner = n;
-  /*AST_Variable* scan = NULL;
-  AST_VariableList* rol;
-  if( list != NULL ){
-    scan = (AST_Variable*)(list->getItem());
-    rol = (AST_VariableList*)(list->getRestOfList());
-  }
-
-  Type* t = NULL;
-  while(scan != NULL){
-    if( types->classType(n)->getItem(scan->name, t) ){
-      cerr << "ERROR: Redeclaration of class " << n << "'s variable " << scan->name << endl;
-      terminalErrors = true;
-      type = types->errorType();
-    }
-    else{
-      types->classType(n)->add(scan->name,type);
-    }
-    if( rol != NULL ){
-      scan = (AST_Variable*)(rol->getItem());
-      rol = (AST_VariableList*)(rol->getRestOfList());
-    }
-    else
-      scan = NULL;
-  }*/
   ownerSet = true;
 }
 
@@ -829,7 +793,8 @@ AST_Delete::~AST_Delete(){
 }
 
 void AST_Delete::dump(){
-  cerr << "Delete " << variableName << endl;
+  cerr << "Delete" << endl;
+  variable->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -857,6 +822,13 @@ AST_MethodInvoke::~AST_MethodInvoke(){
 
 void AST_MethodInvoke::dump(){
   cerr << "MethodInvoke\n";
+  if( !identifier || identifier < 0 )
+    cerr << methodName << "\n";
+  else{
+    source->dump();
+    cerr << methodName << "\n";
+  }
+  params->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -875,7 +847,7 @@ AST_MethodDeclarator::~AST_MethodDeclarator(){
 }
 
 void AST_MethodDeclarator::dump(){
-  cerr << "Method " << methodName << "\n";
+  cerr << "Method Declaration " << methodName << "\n";
   if( params != NULL )
     params->dump();
 }
@@ -903,23 +875,13 @@ AST_Method::~AST_Method(){
 }
 
 void AST_Method::dump(){
-  cerr << "Method\n";
+  cerr << "Method " << type->toString() << endl ;
+  declarator->dump();
+  body->dump();
 }
 
 void AST_Method::setOwner(char* n){
   owner = n;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * AST_Convert Class
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-AST_Convert::AST_Convert(AST_Expression* l) : AST_UnaryOperator(l){}
-
-AST_Convert::~AST_Convert(){}
-
-void AST_Convert::dump(){
-  cerr << "Convert " << type->toString() << endl;
-  left->dump();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

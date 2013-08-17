@@ -6,11 +6,11 @@ main:
 	pushl	%ebp
 	movl	%esp, %ebp
 A$VMT:
-	.long Object$VMT
+	.longObject$VMT
 	.long A$Destructor
 	.long A$f
 Object$VMT:
-	.long 0
+	.long0
 	.long Object$Destructor
 	.long Object$Object
 	.long Object$equals_Object

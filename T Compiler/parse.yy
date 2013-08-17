@@ -129,12 +129,10 @@ program
   {
     $$ = new AST_ProgramList($1);
     if( before ){
-      cerr << "before"<<endl;
       $$->dump();
     }
     $$->analyze();
     if( after ){
-      cerr << "after"<<endl;
       $$->dump();
     }
 

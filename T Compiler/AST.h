@@ -30,7 +30,6 @@ class AST_Node{
     virtual void setLineNumber( int );
     // get the line number of the node
     virtual int getLineNumber();
-    virtual bool areComparable(AST_Node* l, AST_Node* r);
   protected:
     AST_Node();
 };
@@ -463,6 +462,7 @@ class AST_Cast: public AST_Expression{
   public:
     ~AST_Cast();
     AST_Cast(AST_Expression* ex, AST_Expression* c);
+    TypeClass* castType;
 
     void dump();
     AST_Node* analyze();
@@ -669,17 +669,6 @@ class AST_EmptyStatement: public AST_Statement{
   public:
     AST_EmptyStatement();
     ~AST_EmptyStatement();
-    void dump();
-    AST_Node* analyze();
-    void encode();
-};
-
-// convert unary operator
-class AST_Convert: public AST_UnaryOperator{
-  public:
-    ~AST_Convert();
-    AST_Convert(AST_Expression* left);
-
     void dump();
     AST_Node* analyze();
     void encode();

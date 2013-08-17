@@ -104,8 +104,10 @@ class TypeNull: public Type{
     bool  addParam(char* n, Type* type);
     char* toString();
     char* getName();
-    char* toVMTString(char* owner);
+    void toVMTString(char* owner);
+    char* getMunged(char* owner);
     std::vector<Type*> getSig();
+    SymbolTable* exportAsSymbolTable();
     bool  operator==(const TypeMethod* other);
  };
 
@@ -131,7 +133,7 @@ class TypeClass: public Type{
     char* getName();
     void  encode();
     SymbolTable* getSymbolTable();
-    char* toVMT();
+    void toVMT();
     TypeMethod* getDestructor();
     bool hasDeclaredDestructor;
     bool hasDeclaredConstructor;

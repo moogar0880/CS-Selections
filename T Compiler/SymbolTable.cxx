@@ -62,11 +62,13 @@ bool SymbolTable::lookup(char* name, Type*& type){
   return false;
 }
 
-bool SymbolTable::lookupMethod(TypeMethod* m){
+bool SymbolTable::lookupMethod(TypeMethod* m, Type*& type){
   SymbolTableRecord* cur = methodHead;
   while( cur != NULL ){
-    if( ((TypeMethod*)cur->type) == m )
+    if( ((TypeMethod*)cur->type) == m ){
+      type = ((TypeMethod*)cur->type)->returnType;
       return true;
+    }
     cur = cur->next;
   }
   return false;

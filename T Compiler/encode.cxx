@@ -472,19 +472,11 @@ void AST_Null::encode(){
  *    the main block
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_CompilationUnit::encode(){
-  // generate Object Class code immediately for ease
-  /*cout << "#\tObject Class VMT\n";
-  cout << "\t.data\n";
-  cout << "Object$VMT:\n";
-  cout << "\t.long\t0\n";
-  cout << "\t.text\n";
-  cout << "~~~~~~~~~~~~~~~~~~~~~~~" << endl;*/
   std::vector<TypeClass*> cs = types->getClassList();
   std::vector<TypeClass*>::iterator it;
   for(it = cs.begin(); it != cs.end(); ++it ){
-    cout << (*it)->toVMT();
+    (*it)->toVMT();
   }
-  //cout << "~~~~~~~~~~~~~~~~~~~~~~~" << endl;
 
   if( list != NULL )
     list->encode();
@@ -607,48 +599,6 @@ void AST_ClassInstance::encode(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_EmptyStatement::encode(){
 
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * AST_Convert encode
- *  Need to remove since we only have ints and reference types
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-void AST_Convert::encode(){
-  left->encode();
-  //cerr << line << ": Declared type of Convert = " << type->toString() << endl;
-  if (type == types->intType()){
-    cout << "#\tConvert to int\n";
-    // load value into fp register
-    cout << "\tflds\t(%esp)\n";
-    // set rounding mode to truncate
-    // store fp control word in first word
-    cout << "\tfnstcw\t(%esp)\n";
-    // put control word in %ax
-    cout << "\tmovw\t(%esp), %ax\n";
-    // set RC bits to "truncate"
-    cout << "\tmovb\t$12, %ah\n";
-    // put modified control word in 2nd slot
-    cout << "\tmovw\t%ax, 2(%esp)\n";
-    // load modified control word
-    cout << "\tfldcw\t2(%esp)\n";
-    // put old control word in %ax
-    cout << "\tmovw\t(%esp), %ax\n";
-    // convert value to signed int
-    cout << "\tfistpl\t(%esp)\n";
-    // re-establish old fp control word */
-    // alloc one word on top of stack
-    cout << "\tsubl\t$2, %esp\n";
-    // put original cntrl word on stack
-    cout << "\tmovw\t%ax, (%esp)\n";
-    // re-load original control word
-    cout << "\tfldcw\t(%esp)\n";
-    // free word on top of stack
-    cout << "\taddl\t$2, %esp\n";
-  }
-  else{
-    //cerr << line << ": BUG in AST_Convert::encode: unexpected type\n";
-    //exit(-1);
-  }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
