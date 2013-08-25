@@ -143,7 +143,7 @@ TypeMethod* TypeClass::getDestructor(){
 }
 
 void TypeClass::toVMT(){
-  cout << name << "$VMT:\n\t.long";
+  cout << name << "$VMT:\n\t.long ";
   if( parent != NULL )
     cout << parent->getName() << "$VMT";
   else
