@@ -575,9 +575,32 @@ AST_Node* AST_Continue::analyze(){
  *  If there is a list of Classes, analyze it then analyze the main
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Node* AST_CompilationUnit::analyze(){
+  //Hardcode Object Constructor
+  AST_StatementList* objConst;
+  objConst = new AST_StatementList(
+    new AST_Method(NULL,
+      new AST_MethodDeclarator(
+        new AST_Variable((char*)"Object"),
+          new AST_ParameterList(NULL,NULL)),
+      new AST_StatementList(new AST_EmptyStatement(),NULL),1),NULL);
+  //Hardcode Object Destructor
+  AST_StatementList* objDest;
+  objDest  = new AST_StatementList(
+    new AST_Method(NULL,
+      new AST_MethodDeclarator(
+        new AST_Variable((char*)"Object"),
+          new AST_ParameterList(NULL,NULL)),
+      new AST_StatementList(new AST_EmptyStatement(),NULL),-1),NULL);
+  //Hardcode Object Equals Method
+  // TODO ^
+  objConst->concat(objDest);
   if( list != NULL ){
-    list->analyze();
+    list->concat(new AST_ClassList(new AST_Class(new AST_Variable((char*)"Object"),objConst, NULL),NULL));
   }
+  else{
+    list = new AST_ClassList(new AST_Class(new AST_Variable((char*)"Object"),objConst, NULL),NULL);
+  }
+  list->analyze();
   main->analyze();
   return (AST_Node*) this;
 }

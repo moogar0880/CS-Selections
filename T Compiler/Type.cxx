@@ -238,7 +238,10 @@ char* TypeMethod::getMunged(char* owner){
   char* toRet = new char[size];
   strcpy(toRet, owner);
   strcat(toRet, "$");
-  strcat(toRet, name);
+  if(isDestructor)
+    strcat(toRet, "Destructor");
+  else
+    strcat(toRet, name);
   std::vector<Type*>::iterator it;
   it = signature.begin();
   // Need to skip return type

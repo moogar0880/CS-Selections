@@ -565,7 +565,7 @@ AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
   }
 
   //Object class has no parent and no non-method fields for phase 3
-  TypeClass* obj = (TypeClass*)(types->createNewClassType((char *)"Object"));
+  /*TypeClass* obj = (TypeClass*)(types->createNewClassType((char *)"Object"));
   if( obj != NULL ){
     obj->setParent(NULL);
     TypeMethod* objConstructor = new TypeMethod((char*)"Object", NULL, true, false);
@@ -575,7 +575,7 @@ AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
     obj->add((char*)"Object", objConstructor);
     obj->add((char*)"Object", objDestructor);
     obj->add((char*)"equals", equals);
-  }
+  }*/
   if( list != NULL )
     listConvert(list);
 }

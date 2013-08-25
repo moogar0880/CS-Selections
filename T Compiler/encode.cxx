@@ -508,10 +508,13 @@ void AST_Class::encode(){
   TypeClass* tc = types->classType(name);
   if( !tc->hasDeclaredDestructor ){
     cout << name << "$Destructor:\n";
+    // Need to call super destructor OR encode it
+    cout << "\tpopl\t%ebp\n";
     cout << "\tret\n";
   }
   if( !tc->hasDeclaredConstructor ){
     cout << name << "$" << name << ":\n";
+    cout << "\tpopl\t%ebp\n";
     cout << "\tret\n";
   }
 }
@@ -637,7 +640,12 @@ void AST_ArgumentsList::encode(){
  *  TODO
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Method::encode(){
-  cout << "#\t Method " << mungedName << "\n";
+  if(flag == 0)
+    cout << "#\tMethod " << mungedName << "\n";
+  if(flag == 1)
+    cout << "#\tConstructor " << mungedName << "\n";
+  if(flag == -1)
+    cout << "#\tDestructor " << mungedName << "\n";
   cout << "\t.align\t4\n";
   cout << "\t.globl\t" << mungedName << "\n";
   cout << mungedName << ":\n";
