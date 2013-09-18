@@ -131,6 +131,7 @@ class TypeClass: public Type{
     TypeClass(char* n);
     ~TypeClass();
 
+    std::vector<TypeMethod*> vmt;
     bool  getItem(char* n, Type*& type);
     void  add(char* n, Type* type);
     void  setParent(Type* p);

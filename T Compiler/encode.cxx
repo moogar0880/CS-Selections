@@ -743,7 +743,15 @@ void AST_MethodInvoke::encode(){
   int n = 0;
   if( params != NULL )
     n = params->getLength();
-  int methodCount = count(types->classType(callingType->getName())->getSymbolTable()->methodHead,8,sig);
+  // int methodCount = count(types->classType(callingType->getName())->getSymbolTable()->methodHead,8,sig);
+  int methodCount = 8;
+  for(std::vector<TypeMethod*>::iterator it = types->classType(callingType->getName())->vmt.begin(); it != types->classType(callingType->getName())->vmt.end(); ++it)
+  {
+    if( !strcmp((*it)->signatureString(), sig) ){
+      break;
+    }
+    methodCount += 4;
+  }
   // cout << "\tpushl\t$" << n + 1 << "\n";
   if( identifier > 0 ){ // Variable method call
     source->encode();
@@ -772,7 +780,7 @@ void AST_MethodInvoke::encode(){
     cout << "\tmovl\t8(%ebp), %eax\t# 8(%ebp) is the \"this\" pointer\n";
     cout << "\tpushl\t%eax\n";
     cout << "\tmovl\t(%eax), %eax\t# put VMT pointer into eax\n";
-    cout << "\taddl\t$" << methodCount - 4 << ", %eax\n";
+    cout << "\taddl\t$" << methodCount << ", %eax\n";
   }
   cout << "\tmovl\t(%eax), %eax\t# put method address into eax\n";
   cout << "\tcall\t*%eax\n";

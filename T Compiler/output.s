@@ -8,17 +8,6 @@ A$VMT:
 	.long A$g
 	.text
 #	End of A$VMT
-#	B$VMT
-	.data
-B$VMT:
-	.long A$VMT
-	.long B$Destructor
-	.long A$g
-	.long A$f
-	.long Object$equals_Object
-	.long B$h
-	.text
-#	End of B$VMT
 #	Object$VMT
 	.data
 Object$VMT:
@@ -85,49 +74,6 @@ A$A:
 	movl	%esp, %ebp		# establish new frame pointer
 	call	Object$Object
 A$A$exit:
-	popl	%ebp			# restore caller's frame pointer
-	ret						# restore caller's program counter
-#	Method B$h
-	.align	4
-	.globl	B$h
-B$h:
-	pushl	%ebp			# save old frame pointer
-	movl	%esp, %ebp		# establish new frame pointer
-#	Block
-#	MethodInvoke f: -1
-	movl	8(%ebp), %eax	# 8(%ebp) is the "this" pointer
-	pushl	%eax
-	movl	(%eax), %eax	# put VMT pointer into eax
-	addl	$8, %eax
-	movl	(%eax), %eax	# put method address into eax
-	call	*%eax
-	addl	$(0+1)*4, %esp	# deallocate arguments from stack
-	pushl	%eax			# leave method return value on top of stack
-#	Print int
-	call	RTS_outputInteger
-	addl	$4, %esp
-	movl	$0, %eax
-B$h$exit:
-	popl	%ebp			# restore caller's frame pointer
-	ret						# restore caller's program counter
-#	Default Destructor B$Destructor
-	.align	4
-	.globl	B$Destructor
-B$Destructor:
-	pushl	%ebp			# save old frame pointer
-	movl	%esp, %ebp		# establish new frame pointer
-	call	A$Destructor
-B$Destructor$exit:
-	popl	%ebp			# restore caller's frame pointer
-	ret						# restore caller's program counter
-#	Default Constructor B$B
-	.align	4
-	.globl	B$B
-B$B:
-	pushl	%ebp			# save old frame pointer
-	movl	%esp, %ebp		# establish new frame pointer
-	call	A$A
-B$B$exit:
 	popl	%ebp			# restore caller's frame pointer
 	ret						# restore caller's program counter
 #	Constructor Object$Object
@@ -207,12 +153,12 @@ main:
 #	Declaration
 	.data
 #	VariableList
-mainvar$b: .long 0
+mainvar$a: .long 0
 	.text
 #	Assignment
 #	Variable
-	pushl	$mainvar$b
-#	B Class Instance
+	pushl	$mainvar$a
+#	A Class Instance
 	pushl	$0
 	call	RTS_reverseArgumentsOnStack
 	popl	%ecx			# discard n+1 argument
@@ -222,12 +168,12 @@ mainvar$b: .long 0
 	addl	$8, %esp	# deallocate arguments to calloc
 	cmpl	$0, %eax
 	jne		CI3
-	pushl	$23
+	pushl	$15
 	call	RTS_outOfMemoryError
 CI3:
-	movl	$B$VMT, (%eax)
+	movl	$A$VMT, (%eax)
 	pushl	%eax		# pass the "this" pointer
-	call	B$B
+	call	A$A
 	popl	%eax		# get address of new object into eax
 	addl	$0,	%esp	# deallocate arguments to constructor
 	pushl	%eax
@@ -239,21 +185,21 @@ CI3:
 #	End of Assignment
 #	ExpressionStatement
 	addl	$4, %esp
-#	MethodInvoke h: 1
+#	MethodInvoke g: 1
 #	Variable
-	pushl	$mainvar$b
+	pushl	$mainvar$a
 #	Deref
 	popl	%eax
 	movl	(%eax), %eax
 	pushl	%eax
 #	End Deref
-	pushl	$25
+	pushl	$17
 	call	RTS_checkForNullReference
 	popl	%ecx			# discard line number
 	popl	%eax			# get copy of "this" in eax
 	pushl	%eax			# put copy of "this" back on stack
 	movl	(%eax), %eax	# put VMT pointer into eax
-	addl	$20, %eax
+	addl	$16, %eax
 	movl	(%eax), %eax	# put method address into eax
 	call	*%eax
 	addl	$(0+1)*4, %esp	# deallocate arguments from stack

@@ -1,28 +1,14 @@
 class A
 {
   int i;
-  int f(){ return 1; }
-  int g()
-  {
-    out f();
-  }
-}
-
-class B extends A
-{
-  int h()
-  {
-    out super.f();
-  }
+  int f(int j){ out 12; }
 }
 
 int main()
 {
-  B b;
+  A a;
 
-  b = new B();
+  a = new A();
 
-  b.h();
-
-  out 42;
+  a.f(1);
 }

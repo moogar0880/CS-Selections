@@ -226,6 +226,7 @@ void TypeClass::toVMT(){
     if( (*it2) != NULL && !(*it2)->isConstructor ){
       cout << "\t.long ";
       (*it2)->toVMTString();
+      vmt.push_back((*it2));
       cout << "\n";
     }
   }
@@ -234,6 +235,7 @@ void TypeClass::toVMT(){
     if( (*it1) != NULL ){
       cout << "\t.long ";
       (*it1)->toVMTString(name);
+      vmt.push_back((*it1));
       cout << "\n";
     }
   }
