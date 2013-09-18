@@ -41,12 +41,29 @@ TypeMethod* ScopeManager::getMethod(){
     return curMethod;
 }
 
+bool ScopeManager::in_method(){
+    return inMethod;
+}
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Clear method data. Only to be used when exiting the Method
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void ScopeManager::clearMethod(){
     inMethod  = false;
     curMethod = NULL;
+    clearCaller();
+}
+
+void ScopeManager::setCaller(SymbolTableRecord* str){
+    caller = str;
+}
+
+SymbolTableRecord* ScopeManager::getCaller(){
+    return caller;
+}
+
+void ScopeManager::clearCaller(){
+    caller = NULL;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,4 +127,16 @@ SymbolTable* ScopeManager::up(){
     if( inMethod )
         return types->classType(curClass)->getSymbolTable();
     return NULL;
+}
+
+void ScopeManager::printScope(){
+    if( inMain ){
+        cerr << "\tCurrent Scope: MainFunction\n";
+    }
+    else{
+        cerr << "\tCurrent Scope: " << curClass;
+        if( inMethod )
+            cerr << "\'s " << curMethod->getName() << " method";
+        cerr << "\n";
+    }
 }

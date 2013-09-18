@@ -170,6 +170,8 @@ class AST_Variable: public AST_Expression{
     char* name;
     ~AST_Variable();
     AST_Variable(char *id);
+    bool isParam;
+    int index;
 
     void dump();
     AST_Node* analyze();
@@ -382,6 +384,7 @@ class AST_While: public AST_Statement{
 class AST_Return: public AST_Statement{
   protected:
     AST_Expression* var;
+    char* label;
   public:
     ~AST_Return();
     AST_Return(AST_Expression* var);
@@ -490,8 +493,6 @@ class AST_ArgumentsList: public AST_List{
     AST_ArgumentsList(AST_Expression* v, AST_ArgumentsList* l);
 
     void dump();
-    AST_Node* analyze();
-    void encode();
     int getLength();
 };
 
@@ -544,6 +545,8 @@ class AST_MethodInvoke: public AST_Expression{
     char* methodName;
     AST_ArgumentsList* params;
     int methodOffset;
+    TypeClass* callingType;
+    char* sig;
   public:
     // i is the status bit to be used to easily distinguish between types of
     // method invocations
@@ -552,6 +555,7 @@ class AST_MethodInvoke: public AST_Expression{
 
     void dump();
     AST_Node* analyze();
+    int  count(SymbolTableRecord* scan, int c, char* s);
     void encode();
 };
 
@@ -621,10 +625,10 @@ class AST_FieldDeclaration: public AST_Statement{
 
 class AST_FieldReference: public AST_Expression{
   protected:
-    char* owner;
+    AST_Expression* owner;
     char* variable;
   public:
-    AST_FieldReference(AST_Expression* typ, AST_Expression* id);
+    AST_FieldReference(AST_Expression* o, AST_Expression* v);
     ~AST_FieldReference();
 
     void dump();
@@ -646,8 +650,6 @@ class AST_ClassTypeID: public Type{
 };
 
 class AST_Null: public AST_Literal{
-  protected:
-    Type* type;
   public:
     ~AST_Null();
     AST_Null();
@@ -669,6 +671,15 @@ class AST_EmptyStatement: public AST_Statement{
   public:
     AST_EmptyStatement();
     ~AST_EmptyStatement();
+    void dump();
+    AST_Node* analyze();
+    void encode();
+};
+
+class AST_This: public AST_Variable{
+  public:
+    AST_This(char* id);
+    ~AST_This();
     void dump();
     AST_Node* analyze();
     void encode();

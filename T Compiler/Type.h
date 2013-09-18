@@ -92,6 +92,7 @@ class TypeNull: public Type{
     //dynamic parameter storage, needs to be a list because order matters
     std::vector<SymbolTableRecord*> parameters;
     std::vector<Type*> signature;
+    int paramCount;
 
   public:
     TypeMethod(char* n, Type* ret, bool cons, bool dest);
@@ -99,15 +100,20 @@ class TypeNull: public Type{
     bool isConstructor;
     bool isDestructor;
     Type* returnType;
+    char* owner;
 
     bool  hasParam(char* n);
+    bool  hasParam(char* n, Type*& type);
     bool  addParam(char* n, Type* type);
     char* toString();
     char* getName();
-    void toVMTString(char* owner);
+    void  toVMTString();
+    void  toVMTString(char* owner);
     char* getMunged(char* owner);
+    char* signatureString();
     std::vector<Type*> getSig();
     SymbolTable* exportAsSymbolTable();
+    Type* getReturnType();
     bool  operator==(const TypeMethod* other);
  };
 
@@ -137,6 +143,7 @@ class TypeClass: public Type{
     TypeMethod* getDestructor();
     bool hasDeclaredDestructor;
     bool hasDeclaredConstructor;
+    void inheritFields();
 };
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

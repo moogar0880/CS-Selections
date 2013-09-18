@@ -16,11 +16,12 @@ class ScopeManager{
 protected:
     bool inMethod;
     TypeMethod* curMethod;
+    SymbolTableRecord* caller;
 
     bool inClass;
     char* curClass;
 
-    bool inMain;
+
     // An accessor to keep track of which ST the ScopeManager has
     // presented to the compiler
     int  inUseCurrently;
@@ -28,10 +29,14 @@ protected:
 public:
 	ScopeManager();
 	~ScopeManager();
-
+    bool inMain;
     void setMethod(TypeMethod* m);
     TypeMethod* getMethod();
     void clearMethod();
+    void setCaller(SymbolTableRecord* str);
+    SymbolTableRecord* getCaller();
+    void clearCaller();
+    bool in_method();
 
     void setClass(char* n);
     TypeClass* getClass();
@@ -42,5 +47,7 @@ public:
 
     SymbolTable* currentScope();
     SymbolTable* up();
+
+    void printScope();
 };
 #endif

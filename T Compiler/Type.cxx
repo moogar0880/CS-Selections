@@ -70,7 +70,7 @@ TypeNull::TypeNull(){}
 TypeNull::~TypeNull(){}
 
 char* TypeNull::toString(){
-  return (char *) "null";
+  return (char *) "Null Type";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,23 +142,103 @@ TypeMethod* TypeClass::getDestructor(){
   return destructor;
 }
 
+void TypeClass::inheritFields(){
+  if( strcmp(name,(char*)"Object") ){
+    TypeClass* scan = parent;
+    SymbolTableRecord* str;
+    Type* tmp;
+    // if( scan != NULL )
+    //   cerr << scan == types->classType((char*)"Object") << endl;
+    while( scan != NULL && strcmp(scan->getName(),(char*)"Object") ){
+      str = scan->getSymbolTable()->head;
+      while( str != NULL ){
+        if( !getItem(str->name,tmp) ){
+          add(str->name, str->type);
+        }
+        str = str->next;
+      }
+      scan = scan->parent;
+    }
+  }
+}
+
 void TypeClass::toVMT(){
-  cout << name << "$VMT:\n\t.long ";
+  cout <<"#\t" << name << "$VMT\n";
+  cout << "\t.data\n" << name << "$VMT:\n\t.long ";
   if( parent != NULL )
     cout << parent->getName() << "$VMT";
   else
     cout << "0";
   // Can assume that the destructor will exist by code gen time
   cout << "\n\t.long " << name << "$Destructor\n";
+  // Fill inherited methods into VMT
+  TypeClass* parentScan = parent;
+  std::vector<TypeClass*> v;
+  std::vector<TypeMethod*> inheritedMethods, myMethods;
+  if( parentScan != NULL ){
+    v.push_back(parentScan);
+    while( parentScan->parent != NULL ){
+      parentScan = parentScan->parent;
+      v.push_back(parentScan);
+    }
+  }
+
+  std::vector<TypeClass*>::reverse_iterator it;
+  for(it = v.rbegin(); it != v.rend(); ++it){
+    SymbolTableRecord* str;
+    if( (*it)->getSymbolTable() != NULL && (*it)->getSymbolTable()->methodHead != NULL ){
+      str = (*it)->getSymbolTable()->methodHead;
+      while(str != NULL){
+        if( !strcmp(((TypeMethod*)str->type)->toString(),"method")){
+          ((TypeMethod*)str->type)->owner = (*it)->getName();
+          inheritedMethods.push_back(((TypeMethod*)str->type));
+        }
+        str = str->next;
+      }
+    }
+  }
+
   SymbolTableRecord* scan = classTable->methodHead;
   while( scan != NULL ){
-    if( !strcmp(((TypeMethod*)scan->type)->toString(), "method") ){
-      cout << "\t.long ";
-      ((TypeMethod*)scan->type)->toVMTString(name);
-      cout << "\n";
+    if( !strcmp(((TypeMethod*)scan->type)->toString(), "method")){
+      myMethods.push_back(((TypeMethod*)scan->type));
+      //cerr << ((TypeMethod*)scan->type)->signatureString() << "\n";
     }
     scan = scan->next;
   }
+
+  std::vector<TypeMethod*>::iterator it1;
+  std::vector<TypeMethod*>::reverse_iterator it2;
+  for(it1 = myMethods.begin(); it1 != myMethods.end(); ++it1){
+    for(it2 = inheritedMethods.rbegin(); it2 != inheritedMethods.rend(); ++it2){
+      if((*it1) != NULL && (*it2) != NULL){
+        if(!strcmp((*it1)->signatureString(),(*it2)->signatureString())){
+          if(strcmp((*it1)->owner,(*it2)->owner)){
+            (*it2) = (*it1);
+            (*it1) = NULL;
+          }
+        }
+      }
+    }
+  }
+
+  for(it2 = inheritedMethods.rbegin(); it2 != inheritedMethods.rend(); ++it2 ){
+    if( (*it2) != NULL && !(*it2)->isConstructor ){
+      cout << "\t.long ";
+      (*it2)->toVMTString();
+      cout << "\n";
+    }
+  }
+
+  for(it1 = myMethods.begin(); it1 != myMethods.end(); ++it1 ){
+    if( (*it1) != NULL ){
+      cout << "\t.long ";
+      (*it1)->toVMTString(name);
+      cout << "\n";
+    }
+  }
+  cout << "\t.text\n";
+  cout <<"#\tEnd of " << name << "$VMT\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -175,6 +255,7 @@ TypeMethod::TypeMethod(char* n, Type* ret, bool cons, bool dest){
   else{
     signature.push_back(returnType);
   }
+  paramCount = 0;
 }
 
 TypeMethod::~TypeMethod(){
@@ -184,6 +265,10 @@ TypeMethod::~TypeMethod(){
 
 char* TypeMethod::getName(){
   return name;
+}
+
+Type* TypeMethod::getReturnType(){
+  return returnType;
 }
 
 SymbolTable* TypeMethod::exportAsSymbolTable(){
@@ -200,16 +285,29 @@ SymbolTable* TypeMethod::exportAsSymbolTable(){
   return toRet;
 }
 
+bool TypeMethod::hasParam(char* n, Type*& type){
+  std::vector<SymbolTableRecord*>::iterator it;
+  for( it = parameters.begin(); it != parameters.end(); ++it){
+    if( strcmp((*it)->name,n) == 0 ){
+      type = (*it)->type;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool TypeMethod::hasParam(char* n){
   std::vector<SymbolTableRecord*>::iterator it;
   for( it = parameters.begin(); it != parameters.end(); ++it){
-    if( strcmp((*it)->name,n) == 0 )
+    if( strcmp((*it)->name,n) == 0 ){
       return true;
+    }
   }
   return false;
 }
 
 bool TypeMethod::addParam(char* n, Type* type){
+  paramCount++;
   if( !hasParam(n) ){
     parameters.push_back(new SymbolTableRecord(n,type));
     signature.push_back(type);
@@ -222,15 +320,43 @@ char* TypeMethod::toString(){
   return (char*)"method";
 }
 
-void TypeMethod::toVMTString(char* owner){
+void TypeMethod::toVMTString(){
   cout << owner << "$" << name;
   std::vector<Type*>::iterator it;
   it = signature.begin();
   // Need to skip return type
   if( it != signature.end() ){
-    while( ++it != signature.end() )
+    while( ++it != signature.end() ){
       cout << "_" << (*it)->toString();
+    }
   }
+}
+
+void TypeMethod::toVMTString(char* o){
+  cout << o << "$" << name;
+  std::vector<Type*>::iterator it;
+  it = signature.begin();
+  // Need to skip return type
+  if( it != signature.end() ){
+    while( ++it != signature.end() ){
+      cout << "_" << (*it)->toString();
+    }
+  }
+}
+
+char* TypeMethod::signatureString(){
+  char* toRet = new char[500];
+  strcpy(toRet,name);
+  std::vector<Type*>::iterator it;
+  it = signature.begin();
+  // Need to skip return type
+  if( it != signature.end() ){
+    while( ++it != signature.end() ){
+      strcat(toRet,"_");
+      strcat(toRet, (*it)->toString());
+    }
+  }
+  return toRet;
 }
 
 char* TypeMethod::getMunged(char* owner){

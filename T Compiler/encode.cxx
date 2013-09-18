@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <cstdio>
 #include <iostream>
+#include <vector>
 using namespace std;
 
 #include "AST.h"
@@ -15,18 +16,21 @@ extern TypeModule* types;
 extern SymbolTable* symbolTable;
 int labelCount = 0;
 int whileCount = 0;
+int curWhileExit = 0;
+std::vector<int> breakStack;
+std::vector<int> continueStack;
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * encodeInitialize
  *  Output the prelude assembly code
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void encodeInitialize(){
-  cout << "#\tPrologue\n";
+  /*cout << "#\tPrologue\n";
   cout << "\t.text\n";
   cout << "\t.align 4\n";
   cout << "\t.globl\tmain\n";
   cout << "main:\n";
   cout << "\tpushl\t%ebp\n";
-  cout << "\tmovl\t%esp, %ebp\n";
+  cout << "\tmovl\t%esp, %ebp\n";*/
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,10 +38,10 @@ void encodeInitialize(){
  *  Output the epilogue assembly code
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void encodeFinish(){
-  cout << "#\tEpilogue\n";
+  /*cout << "#\tEpilogue\n";
   cout << "main$exit:\n";
   cout << "\tpopl\t%ebp\n";
-  cout << "\tret\n";
+  cout << "\tret\n";*/
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,8 +69,15 @@ void AST_IntegerLiteral::encode(){
  *  Declare a main variable with the given name
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Variable::encode(){
-  cout << "#\tVariable\n";
-  cout << "\tpushl\t$mainvar$" << name << endl;
+  if( !isParam ){
+    cout << "#\tVariable\n";
+    cout << "\tpushl\t$mainvar$" << name << endl;
+  }
+  else{
+    cout << "#\tParameter " << type->toString() << " " << name << "\n";
+    cout << "\tleal\t" << ((index-1)*4)+12 << "(%ebp), %eax\n";
+    cout << "\tpushl %eax\n";
+  }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -86,8 +97,18 @@ void AST_VariableList::encode(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_MainFunction::encode(){
   cout << "#\tMainFunction\n";
+  cout << "\t.text\n";
+  cout << "\t.align 4\n";
+  cout << "\t.globl\tmain\n";
+  cout << "main:\n";
+  cout << "\tpushl\t%ebp\n";
+  cout << "\tmovl\t%esp, %ebp\n";
   if( list != NULL )
     list->encode();
+  cout << "#\tMainFunctionExit\n";
+  cout << "main$exit:\n";
+  cout << "\tpopl\t%ebp\n";
+  cout << "\tret\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,6 +147,7 @@ void AST_Assignment::encode(){
   cout << "\tpopl\t%edx\n";
   cout << "\tmovl\t%eax, (%edx)\n";
   cout << "\tpushl\t%eax\n";
+  cout << "#\tEnd of Assignment\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -274,7 +296,6 @@ void AST_Subtract::encode(){
 void AST_Equality::encode(){
   left->encode();
   right->encode();
-  //cerr << "Equality " << left->type->toString() << " =?= " << right->type->toString() << endl;
   cout << "#\tEquality\n";
   cout << "\tpopl\t%eax\n";
   cout << "\tpopl\t%edx\n";
@@ -410,7 +431,8 @@ void AST_IfThenElse::encode(){
 void AST_While::encode(){
   int l1 = whileCount++;
   int l2 = whileCount++;
-
+  continueStack.push_back(l1);
+  breakStack.push_back(l2);
   cout << "#\tWhile\n";
   cout << "W" << l1 << ":\n";
   condition->encode();
@@ -430,11 +452,12 @@ void AST_While::encode(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Return::encode(){
   cout << "#\tReturn\n";
-  if( var == NULL ){
+  if( var != NULL ){
     var->encode();
-    cout << "\tpopl\t%eax\n";
+
   }
-  cout << "\tjmp\tmain$exit\n";
+  cout << "\tpopl\t%eax\n";
+  cout << "\tjmp\t\t" << label << "\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -442,9 +465,10 @@ void AST_Return::encode(){
  *  Jump to the beginning of the inner-most while loop
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Continue::encode(){
-  int l1 = labelCount - 2;
+  int e = continueStack.back();
+  continueStack.pop_back();
   cout << "#\tContinue\n";
-  cout << "\tjmp\tL" << l1 << "\n";
+  cout << "\tjmp\tW" << e << "\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -452,9 +476,10 @@ void AST_Continue::encode(){
  *  Jump out of the inner-most while loop
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Break::encode(){
-  int l1 = whileCount - 1;
+  int e = breakStack.back();
+  breakStack.pop_back();
   cout << "#\tBreak\n";
-  cout << "\tjmp\tW" << l1 << "\n";
+  cout << "\tjmp\tW" << e << "\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -507,15 +532,34 @@ void AST_Class::encode(){
   }
   TypeClass* tc = types->classType(name);
   if( !tc->hasDeclaredDestructor ){
+    cout << "#\tDefault Destructor " << name << "$Destructor\n";
+    cout << "\t.align\t4\n";
+    cout << "\t.globl\t" << name << "$Destructor\n";
     cout << name << "$Destructor:\n";
     // Need to call super destructor OR encode it
-    cout << "\tpopl\t%ebp\n";
-    cout << "\tret\n";
+    // cout << "\tpopl\t%ebp\n";
+    // cout << "\tret\n";
+    cout << "\tpushl\t%ebp\t\t\t# save old frame pointer\n";
+    cout << "\tmovl\t%esp, %ebp\t\t# establish new frame pointer\n";
+    cout << "\tcall\t" << tc->getParent()->toString() << "$" << "Destructor\n";
+    cout << name << "$Destructor$exit:\n";
+    cout << "\tpopl\t%ebp\t\t\t# restore caller's frame pointer\n";
+    cout << "\tret\t\t\t\t\t\t# restore caller's program counter\n";
   }
   if( !tc->hasDeclaredConstructor ){
+    cout << "#\tDefault Constructor " << name << "$" << name << "\n";
+    cout << "\t.align\t4\n";
+    cout << "\t.globl\t" << name << "$" << name << "\n";
     cout << name << "$" << name << ":\n";
-    cout << "\tpopl\t%ebp\n";
-    cout << "\tret\n";
+    // Need to call super destructor OR encode it
+    // cout << "\tpopl\t%ebp\n";
+    // cout << "\tret\n";
+    cout << "\tpushl\t%ebp\t\t\t# save old frame pointer\n";
+    cout << "\tmovl\t%esp, %ebp\t\t# establish new frame pointer\n";
+    cout << "\tcall\t" << tc->getParent()->toString() << "$" << tc->getParent()->toString() << "\n";
+    cout << name << "$" << name << "$exit:\n";
+    cout << "\tpopl\t%ebp\t\t\t# restore caller's frame pointer\n";
+    cout << "\tret\t\t\t\t\t\t# restore caller's program counter\n";
   }
 }
 
@@ -527,7 +571,8 @@ void AST_Class::encode(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Cast::encode(){
   char* targetName = ((AST_Variable*)(expr))->name;
-  cout << "#\tClass Case\n";
+  cast->encode();
+  cout << "#\tClass Cast\n";
   cout << "\tpushl\t$" << targetName << "$VMT\n";
   cout << "\tpushl\t$" << line << "\n";
   cout << "\tcall\tRTS_checkCast\n";
@@ -541,14 +586,13 @@ void AST_Cast::encode(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_FieldReference::encode(){
   cout << "#\tField Reference\n";
-  cout << "\tpushl\t$mainvar$" << owner << endl;
+  owner->encode();
   cout << "\tpushl\t$" << line << "\n";
   cout << "\tcall\tRTS_checkForNullReference\n";
   cout << "\tpopl\t%eax\n";
   cout << "\tpopl\t%eax\n";
-  Type* t;
-  symbolTable->lookup(owner,t);
-  SymbolTableRecord* scan = types->classType(t->toString())->getSymbolTable()->head;
+
+  SymbolTableRecord* scan = types->classType(owner->type->toString())->getSymbolTable()->head;
   int offset = 4;
   while(scan != NULL){
     if( !strcmp(scan->name, variable) )
@@ -564,9 +608,7 @@ void AST_FieldReference::encode(){
  * AST_FieldDeclaration encode
  *
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-void AST_FieldDeclaration::encode(){
-  //Empty...for now
-}
+void AST_FieldDeclaration::encode(){}
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_ClassInstance encode
@@ -575,25 +617,38 @@ void AST_FieldDeclaration::encode(){
  *    memory.
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_ClassInstance::encode(){
-  int length = 4; //length of the object in 4-byte words
+  int length = 1; //length of the object in 4-byte words
   char* className = (((TypeClass*)type)->toString());
   SymbolTableRecord* scan = types->classType(className)->getSymbolTable()->head;
   while( scan != NULL ){
-    length += 4;
+    length += 1;
     scan = scan->next;
   }
+  int nArgs = 0;
   cout << "#\t" << className << " Class Instance\n";
-  cout << "\tpushl\t$4\n";
-  cout << "\tpushl\t$" << length << "\n";
-  cout << "\tcall\tcalloc\n";
-  cout << "\taddl\t$8, %esp\n";
+  if( arguments != NULL ){
+    arguments->encode();
+    nArgs = arguments->getLength();
+  }
+  cout << "\tpushl\t$" << nArgs << "\n";
+  cout << "\tcall\tRTS_reverseArgumentsOnStack\n";
+  cout << "\tpopl\t%ecx\t\t\t# discard n+1 argument\n";
+  cout << "\tpushl\t$4\t\t\t# unit size to be used by calloc\n";
+  cout << "\tpushl\t$" << length << "\t\t\t# number of units to be allocated\n";
+  cout << "\tcall\tcalloc\t\t# address of new object returned in eax\n";
+  cout << "\taddl\t$8, %esp\t# deallocate arguments to calloc\n";
   cout << "\tcmpl\t$0, %eax\n";
   cout << "\tjne\t" << "\tCI" << ++labelCount << "\n";
   cout << "\tpushl\t$" << line << "\n";
   cout << "\tcall\tRTS_outOfMemoryError\n";
   cout << "CI" << labelCount << ":\n";
   cout << "\tmovl\t$" << className << "$VMT, (%eax)\n";
+  cout << "\tpushl\t%eax\t\t# pass the \"this\" pointer\n";
+  cout << "\tcall\t" << className << "$" << className <<  "\n";
+  cout << "\tpopl\t%eax\t\t# get address of new object into eax\n";
+  cout << "\taddl\t$" << nArgs * 4 << ",\t%esp\t# deallocate arguments to constructor\n";
   cout << "\tpushl\t%eax\n";
+  cout << "#\tEnd of Class Instance Creation\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -631,13 +686,13 @@ void AST_Delete::encode(){
  * AST_ArgumentsList encode
  *  TODO
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-void AST_ArgumentsList::encode(){
+/*void AST_ArgumentsList::encode(){
 
-}
+}*/
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_Method encode
- *  TODO
+ *  Output the munged name, the method declarator, and the method body
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Method::encode(){
   if(flag == 0)
@@ -651,6 +706,7 @@ void AST_Method::encode(){
   cout << mungedName << ":\n";
   cout << "\tpushl\t%ebp\t\t\t# save old frame pointer\n";
   cout << "\tmovl\t%esp, %ebp\t\t# establish new frame pointer\n";
+  declarator->encode();
   body->encode();
   cout << "\tmovl\t$0, %eax\n";
   cout << mungedName << "$exit:\n";
@@ -659,64 +715,96 @@ void AST_Method::encode(){
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * AST_Method encode
- *  TODO
+ * AST_Parameter encode
+ *  Encode the offset of the parameter
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_Parameter::encode(){
-  cout << "#\t Parameter " << type->toString() << " " << name << "\n";
-  cout << "\tleal\t((" << index << "-1)*4)+12(%ebp), %eax\n";
-  cout << "pushl %eax\n";
+  cout << "#\tParameter " << type->toString() << " " << name << "\n";
+  cout << "\tleal\t" << ((index-1)*4)+12 << "(%ebp), %eax\n";
+  cout << "\tpushl %eax\n";
+}
+
+int AST_MethodInvoke::count(SymbolTableRecord* scan, int c, char* s){
+  if( scan != NULL ){
+    if( !strcmp(scan->name,s) )
+      return c+4;
+    return count(scan->next,c+4,s);
+  }
+  return c;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * AST_Method encode
- *  TODO
+ * AST_MethodInvoke encode
+ *  Encode the class instance calling the method, the parameters, and
+ *  then the body of the method invokation
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_MethodInvoke::encode(){
-  cout << "#\tMethodInvoke " << methodName << "\n";
+  cout << "#\tMethodInvoke " << methodName << ": " << identifier <<"\n";
+  int n = 0;
+  if( params != NULL )
+    n = params->getLength();
+  int methodCount = count(types->classType(callingType->getName())->getSymbolTable()->methodHead,8,sig);
+  // cout << "\tpushl\t$" << n + 1 << "\n";
   if( identifier > 0 ){ // Variable method call
     source->encode();
   }
-  params->encode();
-  int n = params->getLength();
 
-  cout << "pushl $" << n + 1 << "\n";
-  cout << "call\tRTS_reverseArgumentsOnStack\n";
-  cout << "popl\t%ecx\t\t# discard n+1 argument\n";
-  cout << "pushl $" << line << "\n";
-  cout << "call\tRTS_checkForNullReference\n";
-  cout << "popl\t%ecx\t\t# discard line number\n";
-  cout << "popl\t%eax\t\t# get copy of \"this\" in eax\n";
-  cout << "pushl\t%eax\t\t# put copy of \"this\" back on stack\n";
-  cout << "movl\t(%eax), %eax\t\t# put VMT pointer into eax\n";
-  cout << "addl\t$" << methodOffset << ", %eax\n";
-  cout << "movl\t(%eax), %eax\t\t# put method address into eax\n";
-  cout << "call\t*%eax\n";
-  cout << "addl\t$(" << n << "+1)*4], %esp\t# deallocate arguments from stack\n";
-  cout << "pushl\t%eax\t\t\t# leave method return value on top of stack\n";
+  if( params != NULL )
+    params->encode();
+  if( identifier > 0 ){
+    // cout << "\tcall\tRTS_reverseArgumentsOnStack\n";
+    // cout << "\tpopl\t%ecx\t\t\t# discard n+1 argument\n";
+    cout << "\tpushl\t$" << line << "\n";
+    cout << "\tcall\tRTS_checkForNullReference\n";
+    cout << "\tpopl\t%ecx\t\t\t# discard line number\n";
+    cout << "\tpopl\t%eax\t\t\t# get copy of \"this\" in eax\n";
+    cout << "\tpushl\t%eax\t\t\t# put copy of \"this\" back on stack\n";
+    cout << "\tmovl\t(%eax), %eax\t# put VMT pointer into eax\n";
+    cout << "\taddl\t$" << methodCount << ", %eax\n";
+  }
+  else if( identifier == 0 ){ // this method
+    cout << "\tmovl\t8(%ebp), %eax\t# 8(%ebp) is the \"this\" pointer\n";
+    cout << "\tpushl\t%eax\n";
+    cout << "\tmovl\t(%eax), %eax\t# put VMT pointer into eax\n";
+    cout << "\taddl\t$" << methodCount << ", %eax\n";
+  }
+  else if( identifier < 0 ){ //Super method
+    cout << "\tmovl\t8(%ebp), %eax\t# 8(%ebp) is the \"this\" pointer\n";
+    cout << "\tpushl\t%eax\n";
+    cout << "\tmovl\t(%eax), %eax\t# put VMT pointer into eax\n";
+    cout << "\taddl\t$" << methodCount - 4 << ", %eax\n";
+  }
+  cout << "\tmovl\t(%eax), %eax\t# put method address into eax\n";
+  cout << "\tcall\t*%eax\n";
+  cout << "\taddl\t$(" << n << "+1)*4, %esp\t# deallocate arguments from stack\n";
+  cout << "\tpushl\t%eax\t\t\t# leave method return value on top of stack\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * AST_Method encode
- *  TODO
+ * AST_ParameterList encode
+ *  Encode all parameters in the ParameterList
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_ParameterList::encode(){
   int i = 1;
   AST_List* scan = restOfList;
   ((AST_Parameter*)(item))->index = i++;
   ((AST_Parameter*)(item))->encode();
-  while(scan->getItem() != NULL){
-    ((AST_Parameter*)(scan->getItem()))->index = i++;
-    ((AST_Parameter*)(scan->getItem()))->encode();
+  if( scan != NULL ){
+    while(scan != NULL){
+      ((AST_Parameter*)(scan->getItem()))->index = i++;
+      ((AST_Parameter*)(scan->getItem()))->encode();
+      scan = scan->getRestOfList();
+    }
   }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * AST_Method encode
- *  TODO
+ * AST_MethodDeclarator encode
+ *  Encode the list of method parameters, if there are any
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_MethodDeclarator::encode(){
-  params->encode();
+  if( params != NULL )
+    params->encode();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -725,6 +813,15 @@ void AST_MethodDeclarator::encode(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void AST_ConstructorInvoke::encode(){
 
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_This encode
+ *  TODO
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+void AST_This::encode(){
+  cout << "\tmovl\t8(%ebp), %eax\t#8(%ebp) is the \"this\" pointer\n";
+  cout << "\tpushl\t%eax\n";
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -738,4 +835,5 @@ void AST_Deref::encode(){
   cout << "\tpopl\t%eax\n";
   cout << "\tmovl\t(%eax), %eax\n";
   cout << "\tpushl\t%eax\n";
+  cout << "#\tEnd Deref\n";
 }

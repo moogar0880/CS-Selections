@@ -151,7 +151,6 @@ AST_BinaryOperator::~AST_BinaryOperator(){
 AST_BinaryOperator::AST_BinaryOperator(AST_Expression* l, AST_Expression* r){
   left = l;
   right = r;
-
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,6 +183,7 @@ void AST_IntegerLiteral::dump(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Variable::AST_Variable(char* in){
   name = in;
+  isParam = false;
 }
 
 AST_Variable::~AST_Variable(){
@@ -510,10 +510,13 @@ char* AST_Parameter::getName(){
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Class::AST_Class(AST_Expression* n, AST_StatementList* l, Type* p){
   name = ((AST_Variable*)(n))->name;
-  parent = p;
+  if( p == NULL )
+    parent = NULL;
+  else
+    parent = p;
   fields = l;
 
-  if( !types->createNewClassType(name) ){
+  if( strcmp(name,(char*)"Object") && !types->createNewClassType(name) ){
     int l = ((AST_Node*)this)->getLineNumber();
     cerr << l << ": Redeclaration of ClassType " << name << endl;
   }
@@ -564,18 +567,6 @@ AST_CompilationUnit::AST_CompilationUnit(AST_MainFunction* m,
     list->concat(l2);
   }
 
-  //Object class has no parent and no non-method fields for phase 3
-  /*TypeClass* obj = (TypeClass*)(types->createNewClassType((char *)"Object"));
-  if( obj != NULL ){
-    obj->setParent(NULL);
-    TypeMethod* objConstructor = new TypeMethod((char*)"Object", NULL, true, false);
-    TypeMethod* objDestructor  = new TypeMethod((char*)"Object", NULL, false, true);
-    TypeMethod* equals         = new TypeMethod((char*)"equals", types->intType(), false, false);
-    equals->addParam((char*)"o", obj);
-    obj->add((char*)"Object", objConstructor);
-    obj->add((char*)"Object", objDestructor);
-    obj->add((char*)"equals", equals);
-  }*/
   if( list != NULL )
     listConvert(list);
 }
@@ -624,16 +615,21 @@ AST_ArgumentsList::~AST_ArgumentsList(){}
 
 void AST_ArgumentsList::dump(){
   cerr << "Argument List" << endl;
-  item->dump();
-  restOfList->dump();
+  if( item != NULL )
+    item->dump();
+  if( restOfList != NULL )
+    restOfList->dump();
 }
 
 int AST_ArgumentsList::getLength(){
   int i = 0;
-  AST_Node* scan = item;
-  while(scan != NULL){
+  AST_List* scan = restOfList;
+  if( item != NULL ){
     i++;
-    scan = restOfList->getItem();
+    while(scan != NULL){
+      i++;
+      scan = scan->getRestOfList();
+    }
   }
   return i;
 }
@@ -652,7 +648,7 @@ AST_ClassInstance::~AST_ClassInstance(){
 }
 
 void AST_ClassInstance::dump(){
-  cerr << "Class Instance of type " << type << endl;
+  cerr << "Class Instance of type " << type->toString() << endl;
   arguments->dump();
 }
 
@@ -681,9 +677,9 @@ void AST_FieldDeclaration::setOwner(char* n){
  * AST_FieldReference Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
  AST_FieldReference::AST_FieldReference(AST_Expression* o, AST_Expression* v){
-  // type = types->classType(((AST_Variable*)(typ))->name);
   type = types->noType();
-  owner = ((AST_Variable*)(o))->name;
+  // owner = ((AST_Variable*)(o))->name;
+  owner = o;
   variable = ((AST_Variable*)(v))->name;
 }
 
@@ -716,7 +712,7 @@ char* AST_ClassTypeID::toString(){
  * AST_Null Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 AST_Null::AST_Null(){
-  // type = types->nullType();
+  type = types->nullType();
 }
 
 AST_Null::~AST_Null(){}
@@ -875,7 +871,10 @@ AST_Method::~AST_Method(){
 }
 
 void AST_Method::dump(){
-  cerr << "Method " << type->toString() << endl ;
+  if( type != NULL )
+    cerr << "Method " << type->toString() << endl ;
+  else
+    cerr << "Method" << endl;
   declarator->dump();
   body->dump();
 }
@@ -884,6 +883,18 @@ void AST_Method::setOwner(char* n){
   owner = n;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * AST_This Class
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+AST_This::AST_This(char* id) : AST_Variable(id){
+  type = NULL;
+}
+
+AST_This::~AST_This(){}
+
+void AST_This::dump(){
+  cerr << "THIS keyword" << endl;
+}
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * AST_Deref Class
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

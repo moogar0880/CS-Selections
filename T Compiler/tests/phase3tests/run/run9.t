@@ -19,10 +19,17 @@ int main()
   b.j = 14;
 
   a = b;
+
+  out a.i;
+
   b = null;
   a.i = 16;
 
   b = (B) a;
+
+  out b.i;
+
+  out a.i;
 
   out a.i + b.i + b.j;
 

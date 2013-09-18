@@ -142,8 +142,10 @@ program
     if( !terminalErrors ){
       $$->encode();
     }
-    else
+    else{
       cerr << "Errors in code, aborting compilation\n";
+      exit(-1);
+    }
     delete $$;
   }
   ;
@@ -750,7 +752,7 @@ PrimaryNoNewArray
   }
   | THIS
   {
-    $$ = new AST_Variable((char*)"THIS");
+    $$ = new AST_This((char*)"this");
   }
   | MethodInvocation
   {
@@ -795,7 +797,7 @@ FieldAccess
   | SUPER '.' Identifier
   {
     AST_Variable* superExpress = new AST_Variable((char*)"SUPER");
-    $$ = new AST_FieldReference(superExpress, $3);
+    $$ = new AST_FieldReference(superExpress,$3);
   }
   ;
 

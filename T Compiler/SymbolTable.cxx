@@ -65,7 +65,7 @@ bool SymbolTable::lookup(char* name, Type*& type){
 bool SymbolTable::lookupMethod(TypeMethod* m, Type*& type){
   SymbolTableRecord* cur = methodHead;
   while( cur != NULL ){
-    if( ((TypeMethod*)cur->type) == m ){
+    if( !strcmp(((TypeMethod*)cur->type)->getName(), m->getName()) ){
       type = ((TypeMethod*)cur->type)->returnType;
       return true;
     }
@@ -105,10 +105,10 @@ bool SymbolTable::installMethod(TypeMethod* m){
     cur = cur->next;
   }
   if( last == NULL ){
-    methodHead = new SymbolTableRecord((char*)"", m);
+    methodHead = new SymbolTableRecord(m->getName(), m);
   }
   else{
-    last->next = new SymbolTableRecord((char*)"", m);
+    last->next = new SymbolTableRecord(m->getName(), m);
   }
   return true;
 }
